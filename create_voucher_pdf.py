@@ -16,7 +16,7 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         new_jpg_output_dir = '/var/www/voucher_images/'
         os.makedirs(new_jpg_output_dir, exist_ok=True)
 
-        # Open the base image
+        # Open the base image 
         img_path = 'assests/voucher.jpg'
         image = Image.open(img_path)
 
