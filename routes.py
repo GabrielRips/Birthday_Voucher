@@ -3,7 +3,7 @@ import datetime
 import logging
 import os
 
-from config import WEBHOOK_SECRET_TOKEN, MAILERSEND_WELCOME_TEMPLATE_ID, CELLCAST_WELCOME_TEMPLATE_ID
+from config import WEBHOOK_SECRET_TOKEN, MAILERSEND_WELCOME_TEMPLATE_ID, CELLCAST_WELCOME_TEMPLATE_ID, MAIN_TABLE
 from db import get_db_connection
 from services import get_next_voucher_code
 from send_email import MailerSendClient
@@ -49,7 +49,8 @@ def signup():
     cursor = db_conn.cursor()
 
     # Check for duplicate email.
-    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    query = f"SELECT id FROM {MAIN_TABLE} WHERE email = %s"
+    cursor.execute(query, (email,))
     if cursor.fetchone():
         cursor.close()
         db_conn.close()
@@ -61,11 +62,11 @@ def signup():
 
     # Insert new user record.
     # This assumes you have added a "signup_date" column of type DATE in your DB.
-    insert_query = ("""
-       INSERT INTO users 
-         (name, birth_day, birth_month, signup_date, email, phone_number, email_sent, sms_sent, voucher_code)
-       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """)
+    insert_query = f"""
+    INSERT INTO {MAIN_TABLE} 
+        (name, birth_day, birth_month, signup_date, email, phone_number, email_sent, sms_sent, voucher_code)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
     cursor.execute(insert_query, (name, birth_day, birth_month, signup_date, email, phone_number, 0, 0, voucher_code))
     user_id = cursor.lastrowid
     db_conn.commit()
@@ -95,7 +96,7 @@ def signup():
     sms_success = cellcast_client.send_sms_template(os.getenv("CELLCAST_WELCOME_TEMPLATE_ID", ""), recipient_data)
 
     # Update the user record with the outcome of the welcome email and SMS.
-    update_query = "UPDATE users SET email_sent = %s, sms_sent = %s WHERE id = %s"
+    update_query = f"UPDATE {MAIN_TABLE}  SET email_sent = %s, sms_sent = %s WHERE id = %s"
     cursor.execute(update_query, (1 if email_success else 0, 1 if sms_success else 0, user_id))
     db_conn.commit()
 
@@ -123,7 +124,7 @@ def daily_check():
     logger.info(f"Starting daily check for {today}")
     db_conn = get_db_connection()
     cursor = db_conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users")
+    cursor.execute(f"SELECT * FROM {MAIN_TABLE}")
     users = cursor.fetchall()
 
     results = []
@@ -160,7 +161,7 @@ def daily_check():
         voucher_updated = False
         if today == voucher_gen_date and today > last_birthday:
             new_voucher_code = get_next_voucher_code()
-            update_query = "UPDATE users SET voucher_code = %s WHERE id = %s"
+            update_query = f"UPDATE {MAIN_TABLE} SET voucher_code = %s WHERE id = %s"
             cursor.execute(update_query, (new_voucher_code, user_id))
             db_conn.commit()
             logger.info(f"User {user_id} voucher updated from {voucher_code} to {new_voucher_code}")

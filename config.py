@@ -13,6 +13,7 @@ MYSQL_USER=os.getenv("MYSQL_USER")
 MYSQL_PASSWORD=os.getenv("MYSQL_PASSWORD")
 MYSQL_DATABASE=os.getenv("MYSQL_DATABASE")
 MYSQL_SSL_CA=os.getenv("MYSQL_SSL_CA")
+MAIN_TABLE = os.getenv("MYSQL_USERS_TABLE")
 
 # MailerSend configuration
 MAILERSEND_API_KEY = os.getenv("MAILERSEND_API_KEY")
