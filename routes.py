@@ -3,7 +3,16 @@ import datetime
 import logging
 import os
 
-from config import WEBHOOK_SECRET_TOKEN, MAILERSEND_WELCOME_TEMPLATE_ID, CELLCAST_WELCOME_TEMPLATE_ID, MAIN_TABLE, MAILERSEND_API_KEY, MAILERSEND_SENDER, CELLCAST_API_KEY, CELLCAST_SENDER_ID
+from config import (
+    WEBHOOK_SECRET_TOKEN,
+    MAILERSEND_WELCOME_TEMPLATE_ID,
+    CELLCAST_WELCOME_TEMPLATE_ID,
+    MAIN_TABLE,
+    MAILERSEND_API_KEY,
+    MAILERSEND_SENDER,
+    CELLCAST_API_KEY,
+    CELLCAST_SENDER_ID
+)
 from db import get_db_connection
 from services import get_next_voucher_code
 from send_email import MailerSendClient
@@ -15,8 +24,8 @@ bp = Blueprint('routes', __name__)
 
 # Initialize external clients using our configuration.
 mailer_client = MailerSendClient(
-    api_key= MAILERSEND_API_KEY,
-    sender_email= MAILERSEND_SENDER
+    api_key=MAILERSEND_API_KEY,
+    sender_email=MAILERSEND_SENDER
 )
 cellcast_client = CellCastClient(
     app_key=CELLCAST_API_KEY,
@@ -39,7 +48,7 @@ def signup():
     email = data.get("email", "").strip()
     phone_number = data.get("phone_number", "").strip()
     birth_day = data.get("birth_day")
-    birth_month = data.get("birth_month")  # Make sure client sends "birth_month"
+    birth_month = data.get("birth_month")  # Ensure the client sends "birth_month"
 
     if not (name and email and phone_number and birth_day and birth_month):
         return jsonify({"status": "error", "message": "Missing required fields"}), 400
@@ -61,7 +70,6 @@ def signup():
     signup_date = datetime.date.today()  # Full signup date
 
     # Insert new user record.
-    # This assumes you have added a "signup_date" column of type DATE in your DB.
     insert_query = f"""
     INSERT INTO {MAIN_TABLE} 
         (name, birth_day, birth_month, signup_date, email, phone_number, email_sent, sms_sent, voucher_code)
@@ -77,9 +85,8 @@ def signup():
     sms_success = False
 
     if pdf_path:
-        email_success = mailer_client.send_email(email, name, os.getenv("MAILERSEND_WELCOME_TEMPLATE_ID", ""), pdf_path)
+        email_success = mailer_client.send_email(email, name, MAILERSEND_WELCOME_TEMPLATE_ID, pdf_path)
         try:
-            import os
             os.remove(pdf_path)
         except Exception as e:
             logger.warning(f"Could not delete PDF {pdf_path}: {e}")
@@ -93,10 +100,10 @@ def signup():
         "fname": name,
         "custom_value_1": image_url
     }]
-    sms_success = cellcast_client.send_sms_template(os.getenv("CELLCAST_WELCOME_TEMPLATE_ID", ""), recipient_data)
+    sms_success = cellcast_client.send_sms_template(CELLCAST_WELCOME_TEMPLATE_ID, recipient_data)
 
     # Update the user record with the outcome of the welcome email and SMS.
-    update_query = f"UPDATE {MAIN_TABLE}  SET email_sent = %s, sms_sent = %s WHERE id = %s"
+    update_query = f"UPDATE {MAIN_TABLE} SET email_sent = %s, sms_sent = %s WHERE id = %s"
     cursor.execute(update_query, (1 if email_success else 0, 1 if sms_success else 0, user_id))
     db_conn.commit()
 
@@ -104,8 +111,6 @@ def signup():
     db_conn.close()
 
     return jsonify({"status": "success", "email": email_success, "sms": sms_success}), 200
-
-
 
 @bp.route('/daily-check', methods=['GET'])
 def daily_check():
@@ -137,7 +142,7 @@ def daily_check():
         voucher_code = user['voucher_code']
         birth_day = int(user['birth_day'])
         birth_month = int(user['birth_month'])
-        signup_date = user['signup_date']  # Full signup date
+        signup_date = user['signup_date']
 
         # Compute the birthday for the current year.
         try:
@@ -146,13 +151,13 @@ def daily_check():
             logger.error(f"Invalid birthday for user {user_id}")
             continue
 
-        # Determine the user's first birthday after signup using the full signup date.
+        # Determine the user's first birthday after signup.
         first_birthday = datetime.date(signup_date.year, birth_month, birth_day)
         if first_birthday < signup_date:
             first_birthday = datetime.date(signup_date.year + 1, birth_month, birth_day)
         first_birthday_passed = today >= first_birthday
 
-        # --- Voucher Update Logic (8 days after last birthday) ---
+        # Voucher Update Logic (8 days after last birthday)
         if today >= birthday_date:
             last_birthday = birthday_date
         else:
@@ -168,8 +173,7 @@ def daily_check():
             voucher_code = new_voucher_code
             voucher_updated = True
 
-        # --- Reminder Logic for Birthday Reminders ---
-        # Determine the upcoming birthday.
+        # Reminder Logic for Birthday Reminders
         if today >= birthday_date:
             upcoming_birthday = datetime.date(today.year + 1, birth_month, birth_day)
         else:
@@ -186,27 +190,20 @@ def daily_check():
             "custom_value_1": image_url
         }]
 
-        # --- Two-Week Reminder ---
         if today == two_weeks_before:
-            if not first_birthday_passed:
-                template_key = "TEMPLATE_1ST_2WEEKS"
-            else:
-                template_key = "TEMPLATE_2ND_2WEEKS"
+            template_key = "1ST_2WEEKS" if not first_birthday_passed else "2ND_2WEEKS"
             email_template_id = os.getenv(f"MAILERSEND_{template_key}_ID", "")
             sms_template_id = os.getenv(f"CELLCAST_{template_key}_ID", "")
             logger.info(f"Sending two-week reminder for user {user_id} using {template_key}")
-
             email_reminder_success = mailer_client.send_email(email, name, email_template_id, None)
             sms_reminder_success = cellcast_client.send_sms_template(sms_template_id, recipient_data)
             reminder_results['two_weeks'] = {"email": email_reminder_success, "sms": sms_reminder_success}
 
-        # --- One-Month Reminder (only if first birthday has passed) ---
         if today == one_month_before and first_birthday_passed:
-            template_key = "TEMPLATE_1MONTH"
+            template_key = "1MONTH"
             email_template_id = os.getenv(f"MAILERSEND_{template_key}_ID", "")
             sms_template_id = os.getenv(f"CELLCAST_{template_key}_ID", "")
             logger.info(f"Sending one-month reminder for user {user_id} using {template_key}")
-
             email_reminder_success = mailer_client.send_email(email, name, email_template_id, None)
             sms_reminder_success = cellcast_client.send_sms_template(sms_template_id, recipient_data)
             reminder_results['one_month'] = {"email": email_reminder_success, "sms": sms_reminder_success}
