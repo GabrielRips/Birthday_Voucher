@@ -7,11 +7,11 @@ load_dotenv()
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
 
 # MySQL configuration
-MYSQL_HOST=os.getenv("MYSQL_HOST"),
-PORT=os.getenv("MYSQL_PORT"),
-MYSQL_USER=os.getenv("MYSQL_USER"),
-MYSQL_PASSWORD=os.getenv("MYSQL_PASSWORD"),
-MYSQL_DATABASE=os.getenv("MYSQL_DATABASE"),
+MYSQL_HOST=os.getenv("MYSQL_HOST")
+MYSQL_PORT=os.getenv("MYSQL_PORT")
+MYSQL_USER=os.getenv("MYSQL_USER")
+MYSQL_PASSWORD=os.getenv("MYSQL_PASSWORD")
+MYSQL_DATABASE=os.getenv("MYSQL_DATABASE")
 MYSQL_SSL_CA=os.getenv("MYSQL_SSL_CA")
 
 # MailerSend configuration
