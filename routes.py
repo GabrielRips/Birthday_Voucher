@@ -3,7 +3,7 @@ import datetime
 import logging
 import os
 
-from config import WEBHOOK_SECRET_TOKEN, MAILERSEND_WELCOME_TEMPLATE_ID, CELLCAST_WELCOME_TEMPLATE_ID, MAIN_TABLE
+from config import WEBHOOK_SECRET_TOKEN, MAILERSEND_WELCOME_TEMPLATE_ID, CELLCAST_WELCOME_TEMPLATE_ID, MAIN_TABLE, MAILERSEND_API_KEY, MAILERSEND_SENDER, CELLCAST_API_KEY, CELLCAST_SENDER_ID
 from db import get_db_connection
 from services import get_next_voucher_code
 from send_email import MailerSendClient
@@ -15,12 +15,12 @@ bp = Blueprint('routes', __name__)
 
 # Initialize external clients using our configuration.
 mailer_client = MailerSendClient(
-    api_key=os.getenv("MAILERSEND_API_KEY"),
-    sender_email=os.getenv("MAILERSEND_SENDER")
+    api_key= MAILERSEND_API_KEY,
+    sender_email= MAILERSEND_SENDER
 )
 cellcast_client = CellCastClient(
-    app_key=os.getenv("CELLCAST_API_KEY"),
-    sender_id=os.getenv("CELLCAST_SENDER_ID")
+    app_key=CELLCAST_API_KEY,
+    sender_id=CELLCAST_SENDER_ID
 )
 
 @bp.route('/signup', methods=['POST'])
