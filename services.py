@@ -9,10 +9,8 @@ def get_next_voucher_code():
     """
     db_conn = get_db_connection()
     cursor = db_conn.cursor()
-    query = (
-        "SELECT MAX(CAST(SUBSTRING(voucher_code, LOCATE('-', voucher_code)+1) AS UNSIGNED)) "
-        "FROM {MAIN_TABLE}"
-    )
+    query = (f"SELECT MAX(CAST(SUBSTRING(voucher_code, LOCATE('-', voucher_code)+1) AS UNSIGNED)) "
+             f"FROM {MAIN_TABLE}")
     cursor.execute(query)
     result = cursor.fetchone()
     max_code = result[0] if result[0] is not None else 999  # Start at 1000 if none exists
