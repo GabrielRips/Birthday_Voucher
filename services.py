@@ -1,5 +1,6 @@
 import datetime
 from db import get_db_connection
+from config import MAIN_TABLE
 
 def get_next_voucher_code():
     """
@@ -10,7 +11,7 @@ def get_next_voucher_code():
     cursor = db_conn.cursor()
     query = (
         "SELECT MAX(CAST(SUBSTRING(voucher_code, LOCATE('-', voucher_code)+1) AS UNSIGNED)) "
-        "FROM users"
+        "FROM {MAIN_TABLE}"
     )
     cursor.execute(query)
     result = cursor.fetchone()
