@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt->close();
                 $mysqli->close();
-                header("Location: index.php");
+                header("Location: index.html");
                 exit;
             } else {
                 // Either the voucher code is invalid or it was already claimed.
