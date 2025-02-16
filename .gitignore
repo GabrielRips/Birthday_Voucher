@@ -1,2 +1,10 @@
 .env
 *.jpg
+vendor/
+.DS_Store
+Thumbs.db
+*.log
+/tmp/
+.cache/
+venv/
+__pycache__/

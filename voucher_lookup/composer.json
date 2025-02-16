@@ -1,0 +1,18 @@
+{
+    "name": "gabriel/voucher_lookup",
+    "description": "A php application for voucher lookups and confirmation of arrivals",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Gabriel\\VoucherLookup\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Gabriel Rips"
+        }
+    ],
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
