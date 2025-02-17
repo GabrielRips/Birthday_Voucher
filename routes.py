@@ -11,7 +11,10 @@ from config import (
     MAILERSEND_API_KEY,
     MAILERSEND_SENDER,
     CELLCAST_API_KEY,
-    CELLCAST_SENDER_ID
+    CELLCAST_SENDER_ID,
+    GOOGLE_SHEETS_CREDENTIALS,
+    GOOGLE_SHEETS_ID,
+    GOOGLE_SHEETS_WORKSHEET
 )
 from db import get_db_connection
 from services import get_next_voucher_code
@@ -19,10 +22,13 @@ from send_email import MailerSendClient
 from send_sms import CellCastClient
 from create_voucher_pdf import generate_voucher_pdf
 
+# Import the Google Sheets client
+from google_sheets_client import GoogleSheetsClient
+
 logger = logging.getLogger(__name__)
 bp = Blueprint('routes', __name__)
 
-# Initialize external clients using our configuration.
+# Initialize external clients.
 mailer_client = MailerSendClient(
     api_key=MAILERSEND_API_KEY,
     sender_email=MAILERSEND_SENDER
@@ -31,14 +37,21 @@ cellcast_client = CellCastClient(
     app_key=CELLCAST_API_KEY,
     sender_id=CELLCAST_SENDER_ID
 )
+# Initialize Google Sheets client.
+sheets_client = GoogleSheetsClient(
+    credentials_json=GOOGLE_SHEETS_CREDENTIALS,
+    spreadsheet_id=GOOGLE_SHEETS_ID,
+    worksheet_name=GOOGLE_SHEETS_WORKSHEET
+)
 
 @bp.route('/signup', methods=['POST'])
 def signup():
     """
     Endpoint to register a new user.
     Expects a JSON payload with: name, email, phone_number, birth_day, birth_month.
-    After inserting the new record, the code sends a welcome email (with a PDF voucher)
+    After inserting the new record, sends a welcome email (with a PDF voucher)
     and SMS, then updates the database with the success flags.
+    Also, appends the signup data to a Google Sheets document.
     """
     data = request.get_json()
     if not data:
@@ -78,6 +91,20 @@ def signup():
     cursor.execute(insert_query, (name, birth_day, birth_month, signup_date, email, phone_number, 0, 0, voucher_code))
     user_id = cursor.lastrowid
     db_conn.commit()
+
+    # Append data to Google Sheets.
+    row_data = [
+        name,
+        birth_day,
+        birth_month,
+        email,
+        phone_number,
+        signup_date.strftime("%Y-%m-%d"),
+        voucher_code
+    ]
+    sheets_result = sheets_client.append_row(row_data)
+    if not sheets_result:
+        logger.error("Failed to append signup data to Google Sheets.")
 
     # Generate the voucher PDF.
     pdf_path = generate_voucher_pdf(name, voucher_code)
