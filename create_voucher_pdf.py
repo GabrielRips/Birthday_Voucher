@@ -38,9 +38,17 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         font_name = ImageFont.truetype(font_path, font_size_name)
         font_code = ImageFont.truetype(font_path, font_size_code)
 
-        # Add dynamic text to the image
-        draw.text((850, 290), name, font=font_name, fill="black")
-        draw.text((960, 420), voucher_code, font=font_code, fill="black")
+        # Calculate relative positions for text placement
+        # Positioning as percentage of image width/height
+        name_x = int(img_width * 0.4)  # 40% of the image width
+        name_y = int(img_height * 0.3)  # 30% of the image height
+
+        code_x = int(img_width * 0.45)  # 45% of the image width
+        code_y = int(img_height * 0.425)  # 42.5% of the image height
+
+        # Add dynamic text to the image with relative positioning
+        draw.text((name_x, name_y), name, font=font_name, fill="black")
+        draw.text((code_x, code_y), voucher_code, font=font_code, fill="black")
 
         # Save the modified image in the new JPG output directory with compression.
         # The 'quality=70' parameter compresses the image (lower quality, smaller file size).
@@ -78,5 +86,5 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         logger.error(f"Failed to generate PDF: {e}")
         return None
 
- # Configure logging so that INFO messages are printed to the console.
+# Configure logging so that INFO messages are printed to the console.
 logging.basicConfig(level=logging.INFO)
