@@ -13,7 +13,7 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         os.makedirs(new_jpg_output_dir, exist_ok=True)
 
         # Open base image
-        img_path = 'assests/voucher_new.jpg'
+        img_path = 'assests/voucher_august.png'
         image = Image.open(img_path)
         img_width, img_height = image.size
         draw = ImageDraw.Draw(image)
