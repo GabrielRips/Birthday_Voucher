@@ -5,15 +5,24 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
+def generate_voucher_pdf(name, voucher_code, output_dir='vouchers', issue_date=None, voucher_image_path=None):
     try:
         # Create output directories
         os.makedirs(output_dir, exist_ok=True)
         new_jpg_output_dir = '/var/www/voucher_images/'
         os.makedirs(new_jpg_output_dir, exist_ok=True)
 
-        # Open base image
-        img_path = 'assests/voucher.jpg'
+        # Use campaign-specific image or fall back to default
+        if voucher_image_path and os.path.exists(voucher_image_path):
+            img_path = voucher_image_path
+        else:
+            # Default fallback image
+            img_path = 'assests/voucher.jpg'
+        
+        if not os.path.exists(img_path):
+            logger.error(f"Voucher image not found: {img_path}")
+            return None
+        
         image = Image.open(img_path)
         img_width, img_height = image.size
         draw = ImageDraw.Draw(image)
@@ -21,23 +30,36 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         # Font sizes
         font_size_name = 80
         font_size_code = 60
+        font_size_date = 40
 
         # Update the font path here
         font_path = os.path.join('path', 'to', 'your', 'font', 'DejaVuSans-Bold.ttf')  # Adjust this path
         font_name = ImageFont.truetype(font_path, font_size_name)
         font_code = ImageFont.truetype(font_path, font_size_code)
+        font_date = ImageFont.truetype(font_path, font_size_date)
 
         # --- Relative positioning ---
         name_rel_x, name_rel_y = 0.415, 0.293
         code_rel_x, code_rel_y = 0.469, 0.424
+        date_rel_x, date_rel_y = 0.469, 0.50  # Position for issue date below the code
 
         name_x = int(name_rel_x * img_width)
         name_y = int(name_rel_y * img_height)
         code_x = int(code_rel_x * img_width)
         code_y = int(code_rel_y * img_height)
+        date_x = int(date_rel_x * img_width)
+        date_y = int(date_rel_y * img_height)
 
         draw.text((name_x, name_y), name, font=font_name, fill="black")
         draw.text((code_x, code_y), voucher_code, font=font_code, fill="black")
+        
+        # Add issue date if provided
+        if issue_date:
+            if isinstance(issue_date, str):
+                date_text = issue_date
+            else:
+                date_text = issue_date.strftime("%Y-%m-%d")
+            draw.text((date_x, date_y), f"Issued: {date_text}", font=font_date, fill="black")
 
         # Save compressed JPG
         image_path_jpg = os.path.join(new_jpg_output_dir, f'voucher_{voucher_code}.jpg')
