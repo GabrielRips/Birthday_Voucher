@@ -7,7 +7,11 @@ from send_email import MailerSendClient
 from send_sms import CellCastClient  # This module now has send_sms_template method
 from dotenv import load_dotenv
 import re
+import random
+import string
 from create_voucher_pdf import generate_voucher_pdf  # Assuming you have this module
+from database import Database
+from scheduler import VoucherScheduler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,12 +54,42 @@ cellcast_client = CellCastClient(app_key=cellcast_api_key, sender_id=cellcast_se
 
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
 
+# Initialize Database
+db = Database()
+if not db.connect():
+    logger.error("Failed to connect to MySQL database. Please check your database configuration.")
+    exit(1)
+
+# Create tables if they don't exist
+db.create_tables()
+
+# Initialize and start scheduler
+scheduler = VoucherScheduler(db, mailer_client, cellcast_client)
+scheduler.start()
+
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     return re.match(regex, email)
 
 def is_valid_phone(phone):
     return re.match(r'^\+?61\d{9}$', phone)
+
+def generate_voucher_code():
+    """Generate a unique voucher code in format BDxxxxxxx (7 digits)"""
+    max_attempts = 100
+    for _ in range(max_attempts):
+        # Generate 7 random digits
+        digits = ''.join(random.choices(string.digits, k=7))
+        voucher_code = f"BD{digits}"
+        
+        # Check if code already exists in database
+        if not db.voucher_code_exists(voucher_code):
+            return voucher_code
+    
+    # Fallback: use timestamp-based code if all random attempts fail
+    import time
+    timestamp = str(int(time.time()))[-7:]  # Last 7 digits of timestamp
+    return f"BD{timestamp}"
 
 @app.route('/birthday-webhook', methods=['POST'])
 def birthday_webhook():
@@ -74,8 +108,31 @@ def birthday_webhook():
         name = data.get("name", "").strip()
         email = data.get("email", "").strip()
         phone = data.get("phone", "").strip()
+        birthday = data.get("birthday")  # Day of month (1-31)
+        birth_month = data.get("birthMonth")  # Month (1-12)
         voucher_code = data.get("voucherCode", "").strip()
         template_type = data.get("templateType", "default").strip()
+        
+        # Validate and convert birthday and birth_month to integers
+        try:
+            if birthday is not None:
+                birthday = int(birthday)
+                if birthday < 1 or birthday > 31:
+                    logger.warning(f"Invalid birthday value: {birthday}. Must be between 1-31.")
+                    birthday = None
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid birthday format: {data.get('birthday')}")
+            birthday = None
+        
+        try:
+            if birth_month is not None:
+                birth_month = int(birth_month)
+                if birth_month < 1 or birth_month > 12:
+                    logger.warning(f"Invalid birth_month value: {birth_month}. Must be between 1-12.")
+                    birth_month = None
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid birth_month format: {data.get('birthMonth')}")
+            birth_month = None
 
         # Mapping for email templates (MailerSend)
         email_template_mapping = {
@@ -88,17 +145,22 @@ def birthday_webhook():
             os.getenv("MAILERSEND_DEFAULT_TEMPLATE_ID")
         )
 
-        logger.info(f"Received data - Name: '{name}', Email: '{email}', Phone: '{phone}', Voucher: '{voucher_code}'")
+        logger.info(f"Received data - Name: '{name}', Email: '{email}', Phone: '{phone}', Birthday: '{birthday}', Birth Month: '{birth_month}', Voucher: '{voucher_code}'")
 
-        # Log warnings if any fields are missing but do not abort
+        # Validate required fields
         if not name:
-            logger.warning("Name is missing.")
-        if not email:
-            logger.warning("Email is missing.")
-        if not phone:
-            logger.warning("Phone is missing.")
+            logger.error("Name is required.")
+            return jsonify({"status": "error", "message": "Name is required."}), 400
+
+        # Generate voucher code if not provided
         if not voucher_code:
-            logger.info("Voucher code is missing. A new one will be generated.")
+            voucher_code = generate_voucher_code()
+            logger.info(f"Generated new voucher code: {voucher_code}")
+        else:
+            # Check if provided voucher code already exists
+            if db.voucher_code_exists(voucher_code):
+                logger.error(f"Voucher code already exists: {voucher_code}")
+                return jsonify({"status": "error", "message": "Voucher code already exists."}), 400
 
         # Validate email and phone formats separately
         email_valid = True
@@ -117,10 +179,24 @@ def birthday_webhook():
             logger.error("Both email and phone formats are invalid.")
             return jsonify({"status": "error", "message": "Both email and phone formats are invalid."}), 400
 
-        # Generate voucher code if not provided
-        if not voucher_code:
-            logger.error("Missing voucher code. Aborting.")
-            return jsonify({"status": "error", "message": "Missing voucher code."}), 400
+        # Store data in MySQL database
+        try:
+            voucher_id = db.insert_voucher(
+                name=name,
+                phone=phone if phone and phone_valid else None,
+                email=email if email and email_valid else None,
+                birthday=birthday,
+                birth_month=birth_month,
+                voucher_code=voucher_code
+            )
+            if voucher_id:
+                logger.info(f"Successfully stored voucher in database with ID: {voucher_id}")
+            else:
+                logger.error("Failed to store voucher in database")
+                return jsonify({"status": "error", "message": "Failed to store voucher in database."}), 500
+        except Exception as e:
+            logger.exception(f"Error storing voucher in database: {e}")
+            return jsonify({"status": "error", "message": "Database error occurred."}), 500
 
         # Initialize success flags
         email_success = False
@@ -184,6 +260,8 @@ def birthday_webhook():
         # Return a detailed JSON response
         result = {
             "status": "success",
+            "voucher_code": voucher_code,
+            "voucher_id": voucher_id,
             "email": email_success,
             "sms": sms_success
         }
@@ -195,4 +273,9 @@ def birthday_webhook():
         return jsonify({"status": "error", "message": "Internal server error."}), 500
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    try:
+        app.run(host='0.0.0.0', port=5000)
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
+        scheduler.stop()
+        db.disconnect()
