@@ -75,12 +75,11 @@ def is_valid_phone(phone):
     return re.match(r'^\+?61\d{9}$', phone)
 
 def generate_voucher_code():
-    """Generate a unique voucher code in format BDxxxxxxx (7 digits)"""
+    """Generate a unique voucher code in format xxxxxxx (7 digits)"""
     max_attempts = 100
     for _ in range(max_attempts):
         # Generate 7 random digits
-        digits = ''.join(random.choices(string.digits, k=7))
-        voucher_code = f"BD{digits}"
+        voucher_code = ''.join(random.choices(string.digits, k=7))
         
         # Check if code already exists in database
         if not db.voucher_code_exists(voucher_code):
@@ -89,7 +88,7 @@ def generate_voucher_code():
     # Fallback: use timestamp-based code if all random attempts fail
     import time
     timestamp = str(int(time.time()))[-7:]  # Last 7 digits of timestamp
-    return f"BD{timestamp}"
+    return timestamp
 
 @app.route('/birthday-webhook', methods=['POST'])
 def birthday_webhook():
@@ -111,7 +110,6 @@ def birthday_webhook():
         birthday = data.get("birthday")  # Day of month (1-31)
         birth_month = data.get("birthMonth")  # Month (1-12)
         voucher_code = data.get("voucherCode", "").strip()
-        template_type = data.get("templateType", "default").strip()
         
         # Validate and convert birthday and birth_month to integers
         try:
@@ -134,16 +132,8 @@ def birthday_webhook():
             logger.warning(f"Invalid birth_month format: {data.get('birthMonth')}")
             birth_month = None
 
-        # Mapping for email templates (MailerSend)
-        email_template_mapping = {
-            "TEMPLATE_1ST_2WEEKS": os.getenv("MAILERSEND_1ST_2WEEKS_ID"),
-            "TEMPLATE_1MONTH": os.getenv("MAILERSEND_NEXT_YEAR_1MONTH_ID"),
-            "TEMPLATE_2ND_2WEEKS": os.getenv("MAILERSEND_NEXT_YEAR_2WEEKS_ID")
-        }
-        email_template_id = email_template_mapping.get(
-            template_type, 
-            os.getenv("MAILERSEND_DEFAULT_TEMPLATE_ID")
-        )
+        # Use default email template (MailerSend)
+        email_template_id = os.getenv("MAILERSEND_DEFAULT_TEMPLATE_ID")
 
         logger.info(f"Received data - Name: '{name}', Email: '{email}', Phone: '{phone}', Birthday: '{birthday}', Birth Month: '{birth_month}', Voucher: '{voucher_code}'")
 
@@ -228,13 +218,8 @@ def birthday_webhook():
         # --- SMS Sending using Template ---
         # Only send SMS if phone is provided and valid.
         if phone and phone_valid:
-            # Map incoming template type to the corresponding CellCast SMS template id.
-            sms_template_mapping = {
-                "TEMPLATE_1ST_2WEEKS": os.getenv("CELLCAST_1ST_2WEEKS_ID"),
-                "TEMPLATE_1MONTH": os.getenv("CELLCAST_NEXT_YEAR_1MONTH_ID"),
-                "TEMPLATE_2ND_2WEEKS": os.getenv("CELLCAST_NEXT_YEAR_2WEEKS_ID")
-            }
-            sms_template_id = sms_template_mapping.get(template_type, os.getenv("CELLCAST_TEMPLATE_ID"))
+            # Use default SMS template (CellCast)
+            sms_template_id = os.getenv("CELLCAST_TEMPLATE_ID")
 
             image_url = f"http://209.38.84.84/images/voucher_{voucher_code}.jpg"
             # Build recipient data for the SMS template call.

@@ -25,12 +25,11 @@ class VoucherScheduler:
         self.scheduler = BackgroundScheduler(timezone=SYDNEY_TZ)
         
     def generate_voucher_code(self):
-        """Generate a unique voucher code in format BDxxxxxxx (7 digits)"""
+        """Generate a unique voucher code in format xxxxxxx (7 digits)"""
         max_attempts = 100
         for _ in range(max_attempts):
             # Generate 7 random digits
-            digits = ''.join(random.choices(string.digits, k=7))
-            voucher_code = f"BD{digits}"
+            voucher_code = ''.join(random.choices(string.digits, k=7))
             
             # Check if code already exists in database
             if not self.db.voucher_code_exists(voucher_code):
@@ -39,7 +38,7 @@ class VoucherScheduler:
         # Fallback: use timestamp-based code if all random attempts fail
         import time
         timestamp = str(int(time.time()))[-7:]  # Last 7 digits of timestamp
-        return f"BD{timestamp}"
+        return timestamp
 
     def send_notifications(self, voucher, email_template_id=None, sms_template_id=None, is_new_year=False):
         """Send email and SMS notifications for a voucher"""

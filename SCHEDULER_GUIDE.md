@@ -8,7 +8,7 @@ This application includes two automated scheduled tasks that run in the backgrou
 
 **What it does:**
 1. Retrieves all people from the database
-2. Generates a new unique voucher code (BDxxxxxxx format) for each person
+2. Generates a new unique voucher code (BDxxxxxx format - 6 digits) for each person
 3. Updates the database with the new voucher code (replaces the old one)
 4. Sends email and SMS notifications to everyone using the "new year" template
 5. Includes the new voucher code in the notifications

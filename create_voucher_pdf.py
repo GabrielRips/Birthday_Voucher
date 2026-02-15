@@ -11,6 +11,9 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         os.makedirs(output_dir, exist_ok=True)
         new_jpg_output_dir = 'pdf'
         os.makedirs(new_jpg_output_dir, exist_ok=True)
+        # Create images directory for web serving
+        images_dir = 'images'
+        os.makedirs(images_dir, exist_ok=True)
 
         # Open base image
         img_path = 'assests/voucher_august.png'
@@ -39,10 +42,15 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         draw.text((name_x, name_y), name, font=font_name, fill="black")
         draw.text((code_x, code_y), voucher_code, font=font_code, fill="black")
 
-        # Save compressed JPG
+        # Save compressed JPG to pdf directory (for PDF generation)
         image_path_jpg = os.path.join(new_jpg_output_dir, f'voucher_{voucher_code}.jpg')
         image.save(image_path_jpg, quality=30, optimize=True)
         logger.info(f"Compressed image saved with text at: {image_path_jpg}")
+        
+        # Also save to images directory for web serving (accessible via http://209.38.84.84/images/)
+        image_path_web = os.path.join(images_dir, f'voucher_{voucher_code}.jpg')
+        image.save(image_path_web, quality=30, optimize=True)
+        logger.info(f"Image saved for web serving at: {image_path_web}")
 
         # Convert to PDF
         class CustomPDF(FPDF):

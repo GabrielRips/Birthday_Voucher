@@ -33,7 +33,7 @@ Stores voucher information linked to customers.
 | `voucher_id` | INT (PK, AUTO_INCREMENT) | Unique voucher identifier |
 | `customer_id` | INT (FK) | Reference to `customer.customer_id` |
 | `year` | INT | Year the voucher is valid for (e.g., 2026, 2027) |
-| `code` | VARCHAR(20) | Unique voucher code (BDxxxxxxx format) |
+| `code` | VARCHAR(20) | Unique voucher code (BDxxxxxx format - 6 digits) |
 | `status` | ENUM('active', 'redeemed', 'expired') | Voucher status (default: 'active') |
 | `issued_at` | DATETIME | When voucher was issued |
 | `expires_at` | DATETIME | When voucher expires (optional) |
@@ -106,7 +106,7 @@ customer_id = db.get_or_create_customer(
 voucher_id = db.create_voucher(
     customer_id=customer_id,
     year=2026,
-    voucher_code="BD1234567",
+    voucher_code="BD123456",
     expires_at=datetime(2026, 12, 31, 23, 59, 59),
     status='active'  # Default is 'active'
 )

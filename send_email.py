@@ -92,7 +92,7 @@ class MailerSendClient:
 if __name__ == "__main__":
     api_key = os.getenv("MAILERSEND_API_KEY")
     sender = os.getenv("MAILERSEND_SENDER")
-    template_id = os.getenv("MAILERSEND_NEXT_YEAR_2WEEKS_ID")
+    template_id = os.getenv("MAILERSEND_DEFAULT_TEMPLATE_ID")
     recipient = os.getenv("RECIPIENT_EMAIL")
 
     if not all([api_key, sender, template_id, recipient]):

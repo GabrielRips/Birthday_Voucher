@@ -141,7 +141,7 @@ class CellCastClient:
 
 if __name__ == "__main__":
     CELLCAST_APPKEY = os.getenv("CELLCAST_API_KEY", "")
-    TEMPLATE_ID = os.getenv("CELLCAST_1ST_2WEEKS_ID", "")
+    TEMPLATE_ID = os.getenv("CELLCAST_TEMPLATE_ID", "")
     RECIPIENTS = [
         {
             "number": "61423325333",
