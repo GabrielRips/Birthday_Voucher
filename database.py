@@ -22,6 +22,19 @@ class Database:
             'charset': 'utf8mb4',
             'collation': 'utf8mb4_unicode_ci'
         }
+        
+        # SSL configuration for Digital Ocean MySQL (requires SSL)
+        ssl_ca = os.getenv('MYSQL_SSL_CA')
+        ssl_disabled = os.getenv('MYSQL_SSL_DISABLED', 'false').lower() == 'true'
+        
+        if not ssl_disabled:
+            # Digital Ocean MySQL requires SSL
+            self.config['ssl_disabled'] = False
+            self.config['ssl_verify_cert'] = os.getenv('MYSQL_SSL_VERIFY_CERT', 'true').lower() == 'true'
+            self.config['ssl_verify_identity'] = os.getenv('MYSQL_SSL_VERIFY_IDENTITY', 'true').lower() == 'true'
+            
+            if ssl_ca:
+                self.config['ssl_ca'] = ssl_ca
 
     def connect(self):
         """Establish connection to MySQL database"""
@@ -201,20 +214,34 @@ class Database:
             logger.error(f"Error checking voucher code: {e}")
             return False
 
-    def create_voucher(self, customer_id, year, voucher_code, expires_at=None, status='active'):
-        """Create a new voucher for a customer. If voucher exists for that year, updates it."""
-        # Use INSERT ... ON DUPLICATE KEY UPDATE to handle existing vouchers
-        insert_query = """
-        INSERT INTO vouchers (customer_id, year, code, status, expires_at)
-        VALUES (%s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            code = VALUES(code),
-            status = VALUES(status),
-            issued_at = CURRENT_TIMESTAMP,
-            expires_at = VALUES(expires_at)
-        """
+    def create_voucher(self, customer_id, year, voucher_code, expires_at=None, status='active', expire_old_vouchers=True):
+        """Create a new voucher for a customer. If voucher exists for that year, updates it.
+        Optionally expires all previous year vouchers for this customer."""
         try:
             cursor = self.connection.cursor()
+            
+            # Expire old vouchers from previous years (if requested)
+            if expire_old_vouchers:
+                expire_query = """
+                UPDATE vouchers 
+                SET status = 'expired' 
+                WHERE customer_id = %s AND year < %s AND status != 'redeemed'
+                """
+                cursor.execute(expire_query, (customer_id, year))
+                expired_count = cursor.rowcount
+                if expired_count > 0:
+                    logger.info(f"Expired {expired_count} old voucher(s) for customer {customer_id}")
+            
+            # Use INSERT ... ON DUPLICATE KEY UPDATE to handle existing vouchers
+            insert_query = """
+            INSERT INTO vouchers (customer_id, year, code, status, expires_at)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                code = VALUES(code),
+                status = VALUES(status),
+                issued_at = CURRENT_TIMESTAMP,
+                expires_at = VALUES(expires_at)
+            """
             cursor.execute(insert_query, (customer_id, year, voucher_code, status, expires_at))
             self.connection.commit()
             
