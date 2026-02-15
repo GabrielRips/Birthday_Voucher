@@ -1,6 +1,6 @@
 # Web Server Setup Guide for Serving Voucher Images
 
-This guide explains how to configure your web server (nginx or Apache) to serve voucher images from the `images` directory, making them accessible at `http://209.38.84.84/images/voucher_XXXXXXX.jpg`.
+This guide explains how to configure your web server (nginx or Apache) to serve voucher images from the `images` directory, making them accessible at `http://170.64.230.163/images/voucher_XXXXXXX.jpg`.
 
 ## Overview
 
@@ -23,7 +23,7 @@ Add the following location block to your nginx server configuration. This should
 ```nginx
 server {
     listen 80;
-    server_name 209.38.84.84;  # Your server IP or domain name
+    server_name IP_ADRESS;  # Your server IP or domain name
 
     # ... your existing Flask app configuration ...
 
@@ -91,7 +91,7 @@ Add one of the following to your Apache virtual host configuration:
 
 ```apache
 <VirtualHost *:80>
-    ServerName 209.38.84.84  # Your server IP or domain name
+    ServerName 170.64.230.163  # Your server IP or domain name
     
     # ... your existing Flask app configuration ...
 
@@ -115,7 +115,7 @@ Add one of the following to your Apache virtual host configuration:
 
 ```apache
 <VirtualHost *:80>
-    ServerName 209.38.84.84
+    ServerName 170.64.230.163
     
     # ... your existing Flask app configuration ...
 
@@ -187,11 +187,11 @@ After configuring your web server, test that images are accessible:
 1. **Generate a test voucher** (this will create an image in the `images` directory)
 2. **Access the image directly** in your browser:
    ```
-   http://209.38.84.84/images/voucher_1234567.jpg
+   http://170.64.230.163/images/voucher_1234567.jpg
    ```
 3. **Check the response headers** using curl:
    ```bash
-   curl -I http://209.38.84.84/images/voucher_1234567.jpg
+   curl -I http://170.64.230.163/images/voucher_1234567.jpg
    ```
 
 You should see:
@@ -245,7 +245,7 @@ Here's a complete example nginx configuration that serves both your Flask app an
 ```nginx
 server {
     listen 80;
-    server_name 209.38.84.84;
+    server_name 170.64.230.163;
 
     # Serve static images
     location /images/ {

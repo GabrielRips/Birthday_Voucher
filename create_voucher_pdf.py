@@ -47,7 +47,7 @@ def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
         image.save(image_path_jpg, quality=30, optimize=True)
         logger.info(f"Compressed image saved with text at: {image_path_jpg}")
         
-        # Also save to images directory for web serving (accessible via http://209.38.84.84/images/)
+        # Also save to images directory for web serving (accessible via http://170.64.230.163/images/)
         image_path_web = os.path.join(images_dir, f'voucher_{voucher_code}.jpg')
         image.save(image_path_web, quality=30, optimize=True)
         logger.info(f"Image saved for web serving at: {image_path_web}")

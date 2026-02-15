@@ -221,7 +221,7 @@ def birthday_webhook():
             # Use default SMS template (CellCast)
             sms_template_id = os.getenv("CELLCAST_TEMPLATE_ID")
 
-            image_url = f"http://209.38.84.84/images/voucher_{voucher_code}.jpg"
+            image_url = f"http://170.64.230.163/images/voucher_{voucher_code}.jpg"
             # Build recipient data for the SMS template call.
             # Adjust merge fields as required by your SMS template.
             recipient_data = [{

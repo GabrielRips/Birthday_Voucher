@@ -81,7 +81,7 @@ class VoucherScheduler:
                 elif not sms_template_id:
                     sms_template_id = os.getenv("CELLCAST_TEMPLATE_ID")
                 
-                image_url = f"http://209.38.84.84/images/voucher_{voucher['voucher_code']}.jpg"
+                image_url = f"http://170.64.230.163/images/voucher_{voucher['voucher_code']}.jpg"
                 recipient_data = [{
                     "number": voucher['phone'],
                     "fname": voucher['name'],
