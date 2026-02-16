@@ -35,13 +35,43 @@ class GoogleSheetsClient:
     def __init__(self):
         """Initialize Google Sheets client using service account credentials."""
         try:
-            # Get credentials from environment variables
+            # Get credentials from environment variables or file
             creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON")
+            creds_file = os.getenv("GOOGLE_SHEETS_CREDENTIALS_FILE")
             spreadsheet_input = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")
             worksheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET_NAME", "Sheet1")
             
-            if not creds_json or not spreadsheet_input:
-                logger.error("Missing Google Sheets credentials or spreadsheet ID in environment variables")
+            # Load credentials from file or JSON string
+            import json
+            creds_dict = None
+            
+            if creds_file:
+                # Try to load from file path
+                if os.path.exists(creds_file):
+                    try:
+                        with open(creds_file, 'r') as f:
+                            creds_dict = json.load(f)
+                        logger.info(f"Loaded Google Sheets credentials from file: {creds_file}")
+                    except Exception as e:
+                        logger.error(f"Failed to load credentials from file {creds_file}: {e}")
+                else:
+                    logger.error(f"Credentials file not found: {creds_file}")
+            elif creds_json:
+                # Try to load from JSON string
+                try:
+                    creds_dict = json.loads(creds_json)
+                    logger.info("Loaded Google Sheets credentials from environment variable")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse credentials JSON string: {e}")
+            
+            if not creds_dict:
+                logger.error("Missing Google Sheets credentials. Set either GOOGLE_SHEETS_CREDENTIALS_FILE or GOOGLE_SHEETS_CREDENTIALS_JSON")
+                self.client = None
+                self.worksheet = None
+                return
+            
+            if not spreadsheet_input:
+                logger.error("Missing GOOGLE_SHEETS_SPREADSHEET_ID in environment variables")
                 self.client = None
                 self.worksheet = None
                 return
@@ -50,14 +80,12 @@ class GoogleSheetsClient:
             spreadsheet_id = extract_spreadsheet_id(spreadsheet_input)
             
             if not spreadsheet_id:
-                logger.error("Could not extract spreadsheet ID from provided input")
+                logger.error(f"Could not extract spreadsheet ID from provided input: {spreadsheet_input}")
                 self.client = None
                 self.worksheet = None
                 return
             
-            # Parse credentials JSON string
-            import json
-            creds_dict = json.loads(creds_json)
+            logger.info(f"Using spreadsheet ID: {spreadsheet_id}")
             
             # Define the scope
             scope = ['https://spreadsheets.google.com/feeds',
@@ -66,9 +94,15 @@ class GoogleSheetsClient:
             # Authenticate using service account credentials
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
             self.client = gspread.authorize(creds)
+            logger.info("Successfully authenticated with Google Sheets API")
             
             # Open the spreadsheet
-            self.spreadsheet = self.client.open_by_key(spreadsheet_id)
+            try:
+                self.spreadsheet = self.client.open_by_key(spreadsheet_id)
+                logger.info(f"Successfully opened spreadsheet: {self.spreadsheet.title}")
+            except Exception as e:
+                logger.error(f"Failed to open spreadsheet with ID {spreadsheet_id}. Make sure the service account has access to the spreadsheet. Error: {e}")
+                raise
             
             # Get or create the worksheet
             try:
