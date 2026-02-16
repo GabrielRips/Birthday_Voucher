@@ -146,7 +146,7 @@ if __name__ == "__main__":
         {
             "number": "61423325333",
             "fname": "John",
-            "custom_value_1": "http://170.64.230.163/images/voucher_ABC123.jpg",
+            "custom_value_1": "http://170.64.230.163/voucher/voucher_ABC123.jpg",
         },
     ]
     SENDER_ID = os.getenv("CELLCAST_SENDER_ID", "DefaultSender") 
