@@ -34,67 +34,14 @@ def extract_spreadsheet_id(spreadsheet_input):
 class GoogleSheetsClient:
     def __init__(self):
         """Initialize Google Sheets client using service account credentials."""
-        logger.info("Starting Google Sheets client initialization...")
         try:
-            # Get credentials from environment variables or file
+            # Get credentials from environment variables
             creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON")
-            creds_file = os.getenv("GOOGLE_SHEETS_CREDENTIALS_FILE")
             spreadsheet_input = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")
             worksheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET_NAME", "Sheet1")
             
-            logger.info(f"Environment variables check:")
-            logger.info(f"  GOOGLE_SHEETS_CREDENTIALS_FILE: {'SET' if creds_file else 'NOT SET'}")
-            logger.info(f"  GOOGLE_SHEETS_CREDENTIALS_JSON: {'SET' if creds_json else 'NOT SET'}")
-            logger.info(f"  GOOGLE_SHEETS_SPREADSHEET_ID: {'SET' if spreadsheet_input else 'NOT SET'}")
-            logger.info(f"  GOOGLE_SHEETS_WORKSHEET_NAME: {worksheet_name}")
-            
-            # Load credentials from file or JSON string
-            import json
-            creds_dict = None
-            
-            if creds_file:
-                # Try to load from file path (check both absolute and relative paths)
-                file_path = creds_file
-                if not os.path.isabs(creds_file):
-                    # Try relative to current working directory
-                    if not os.path.exists(creds_file):
-                        # Try relative to script directory
-                        script_dir = os.path.dirname(os.path.abspath(__file__))
-                        file_path = os.path.join(script_dir, creds_file)
-                
-                if os.path.exists(file_path):
-                    try:
-                        with open(file_path, 'r') as f:
-                            creds_dict = json.load(f)
-                        logger.info(f"Loaded Google Sheets credentials from file: {file_path}")
-                    except Exception as e:
-                        logger.error(f"Failed to load credentials from file {file_path}: {e}")
-                        logger.exception("Full error details:")
-                else:
-                    logger.warning(f"Credentials file not found at: {creds_file}")
-                    logger.warning(f"Also tried absolute path: {os.path.abspath(creds_file)}")
-                    logger.warning(f"Current working directory: {os.getcwd()}")
-                    logger.error(f"Credentials file not found at: {creds_file}")
-            elif creds_json:
-                # Try to load from JSON string
-                try:
-                    creds_dict = json.loads(creds_json)
-                    logger.info("Loaded Google Sheets credentials from environment variable")
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse credentials JSON string: {e}")
-            
-            if not creds_dict:
-                logger.warning("Missing Google Sheets credentials. Set either GOOGLE_SHEETS_CREDENTIALS_FILE or GOOGLE_SHEETS_CREDENTIALS_JSON")
-                logger.warning(f"GOOGLE_SHEETS_CREDENTIALS_FILE: {'Set' if creds_file else 'Not set'}")
-                logger.warning(f"GOOGLE_SHEETS_CREDENTIALS_JSON: {'Set' if creds_json else 'Not set'}")
-                logger.error("Missing Google Sheets credentials. Set either GOOGLE_SHEETS_CREDENTIALS_FILE or GOOGLE_SHEETS_CREDENTIALS_JSON")
-                self.client = None
-                self.worksheet = None
-                return
-            
-            if not spreadsheet_input:
-                logger.warning("Missing GOOGLE_SHEETS_SPREADSHEET_ID in environment variables")
-                logger.error("Missing GOOGLE_SHEETS_SPREADSHEET_ID in environment variables")
+            if not creds_json or not spreadsheet_input:
+                logger.error("Missing Google Sheets credentials or spreadsheet ID in environment variables")
                 self.client = None
                 self.worksheet = None
                 return
@@ -103,13 +50,14 @@ class GoogleSheetsClient:
             spreadsheet_id = extract_spreadsheet_id(spreadsheet_input)
             
             if not spreadsheet_id:
-                logger.warning(f"Could not extract spreadsheet ID from provided input: {spreadsheet_input}")
-                logger.error(f"Could not extract spreadsheet ID from provided input: {spreadsheet_input}")
+                logger.error("Could not extract spreadsheet ID from provided input")
                 self.client = None
                 self.worksheet = None
                 return
             
-            logger.info(f"Using spreadsheet ID: {spreadsheet_id}")
+            # Parse credentials JSON string
+            import json
+            creds_dict = json.loads(creds_json)
             
             # Define the scope
             scope = ['https://spreadsheets.google.com/feeds',
@@ -118,16 +66,9 @@ class GoogleSheetsClient:
             # Authenticate using service account credentials
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
             self.client = gspread.authorize(creds)
-            logger.info("Successfully authenticated with Google Sheets API")
             
             # Open the spreadsheet
-            try:
-                self.spreadsheet = self.client.open_by_key(spreadsheet_id)
-                logger.info(f"Successfully opened spreadsheet: {self.spreadsheet.title}")
-            except Exception as e:
-                logger.warning(f"Failed to open spreadsheet with ID {spreadsheet_id}. Make sure the service account has access to the spreadsheet. Error: {e}")
-                logger.error(f"Failed to open spreadsheet with ID {spreadsheet_id}. Make sure the service account has access to the spreadsheet. Error: {e}")
-                raise
+            self.spreadsheet = self.client.open_by_key(spreadsheet_id)
             
             # Get or create the worksheet
             try:
@@ -164,7 +105,6 @@ class GoogleSheetsClient:
             logger.info("Google Sheets client initialized successfully")
             
         except Exception as e:
-            logger.warning(f"Failed to initialize Google Sheets client: {e}")
             logger.exception(f"Failed to initialize Google Sheets client: {e}")
             self.client = None
             self.worksheet = None

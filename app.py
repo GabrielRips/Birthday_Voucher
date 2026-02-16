@@ -69,20 +69,7 @@ scheduler = VoucherScheduler(db, mailer_client, cellcast_client)
 scheduler.start()
 
 # Initialize Google Sheets client
-logger.info("=" * 60)
-logger.info("Initializing Google Sheets client...")
 google_sheets_client = GoogleSheetsClient()
-if google_sheets_client.worksheet is None:
-    logger.warning("=" * 60)
-    logger.warning("Google Sheets client FAILED to initialize!")
-    logger.warning("Google Sheets writes will be SKIPPED for all requests.")
-    logger.warning("Check the logs above for initialization errors.")
-    logger.warning("=" * 60)
-else:
-    logger.info("=" * 60)
-    logger.info("Google Sheets client initialized SUCCESSFULLY!")
-    logger.info("Google Sheets writes are ENABLED.")
-    logger.info("=" * 60)
 
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
@@ -121,11 +108,11 @@ def birthday_webhook():
             return jsonify({"status": "error", "message": "No JSON received"}), 400
 
         # Extract fields from the payload (default to empty string if missing)
-        name = data.get("name", "").strip()
-        email = data.get("email", "").strip()
-        phone = data.get("phone", "").strip()
-        birthday = data.get("birthday")  # Day of month (1-31)
-        birth_month = data.get("birthMonth")  # Month (1-12)
+        name = data.get("Name", "").strip()
+        email = data.get("eMail", "").strip()
+        phone = data.get("Phone", "").strip()
+        birthday = data.get("Birthday_DAY")  # Day of month (1-31)
+        birth_month = data.get("Birthday_MONTH")  # Month (1-12)
         voucher_code = data.get("voucherCode", "").strip()
         
         # Validate and convert birthday and birth_month to integers
@@ -136,7 +123,7 @@ def birthday_webhook():
                     logger.warning(f"Invalid birthday value: {birthday}. Must be between 1-31.")
                     birthday = None
         except (ValueError, TypeError):
-            logger.warning(f"Invalid birthday format: {data.get('birthday')}")
+            logger.warning(f"Invalid birthday format: {data.get('Birthday_DAY')}")
             birthday = None
         
         try:
@@ -146,7 +133,7 @@ def birthday_webhook():
                     logger.warning(f"Invalid birth_month value: {birth_month}. Must be between 1-12.")
                     birth_month = None
         except (ValueError, TypeError):
-            logger.warning(f"Invalid birth_month format: {data.get('birthMonth')}")
+            logger.warning(f"Invalid birth_month format: {data.get('Birthday_MONTH')}")
             birth_month = None
 
         # Use default email template (MailerSend)
