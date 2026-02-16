@@ -12,6 +12,7 @@ import string
 from create_voucher_pdf import generate_voucher_pdf  # Assuming you have this module
 from database import Database
 from scheduler import VoucherScheduler
+from google_sheets import GoogleSheetsClient
 
 # Load environment variables from .env file
 load_dotenv()
@@ -66,6 +67,9 @@ db.create_tables()
 # Initialize and start scheduler
 scheduler = VoucherScheduler(db, mailer_client, cellcast_client)
 scheduler.start()
+
+# Initialize Google Sheets client
+google_sheets_client = GoogleSheetsClient()
 
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
@@ -241,6 +245,21 @@ def birthday_webhook():
                 logger.error(f"Failed to send SMS to {phone}")
         else:
             logger.info("Skipping SMS sending due to missing or invalid phone.")
+
+        # Write entry to Google Sheets
+        try:
+            google_sheets_client.write_entry(
+                name=name,
+                birthday=birthday,
+                birth_month=birth_month,
+                email=email if email and email_valid else None,
+                phone=phone if phone and phone_valid else None,
+                email_success=email_success,
+                sms_success=sms_success
+            )
+        except Exception as e:
+            logger.exception(f"Failed to write to Google Sheets: {e}")
+            # Don't fail the request if Google Sheets write fails
 
         # Return a detailed JSON response
         result = {
