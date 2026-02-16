@@ -69,11 +69,20 @@ scheduler = VoucherScheduler(db, mailer_client, cellcast_client)
 scheduler.start()
 
 # Initialize Google Sheets client
+logger.info("=" * 60)
+logger.info("Initializing Google Sheets client...")
 google_sheets_client = GoogleSheetsClient()
 if google_sheets_client.worksheet is None:
-    logger.warning("Google Sheets client failed to initialize. Check logs above for details. Google Sheets writes will be skipped.")
+    logger.warning("=" * 60)
+    logger.warning("Google Sheets client FAILED to initialize!")
+    logger.warning("Google Sheets writes will be SKIPPED for all requests.")
+    logger.warning("Check the logs above for initialization errors.")
+    logger.warning("=" * 60)
 else:
-    logger.info("Google Sheets client initialized successfully and ready to write entries.")
+    logger.info("=" * 60)
+    logger.info("Google Sheets client initialized SUCCESSFULLY!")
+    logger.info("Google Sheets writes are ENABLED.")
+    logger.info("=" * 60)
 
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'

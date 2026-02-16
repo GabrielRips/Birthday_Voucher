@@ -34,12 +34,19 @@ def extract_spreadsheet_id(spreadsheet_input):
 class GoogleSheetsClient:
     def __init__(self):
         """Initialize Google Sheets client using service account credentials."""
+        logger.info("Starting Google Sheets client initialization...")
         try:
             # Get credentials from environment variables or file
             creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON")
             creds_file = os.getenv("GOOGLE_SHEETS_CREDENTIALS_FILE")
             spreadsheet_input = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")
             worksheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET_NAME", "Sheet1")
+            
+            logger.info(f"Environment variables check:")
+            logger.info(f"  GOOGLE_SHEETS_CREDENTIALS_FILE: {'SET' if creds_file else 'NOT SET'}")
+            logger.info(f"  GOOGLE_SHEETS_CREDENTIALS_JSON: {'SET' if creds_json else 'NOT SET'}")
+            logger.info(f"  GOOGLE_SHEETS_SPREADSHEET_ID: {'SET' if spreadsheet_input else 'NOT SET'}")
+            logger.info(f"  GOOGLE_SHEETS_WORKSHEET_NAME: {worksheet_name}")
             
             # Load credentials from file or JSON string
             import json
