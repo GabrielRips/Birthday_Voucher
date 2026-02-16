@@ -70,6 +70,10 @@ scheduler.start()
 
 # Initialize Google Sheets client
 google_sheets_client = GoogleSheetsClient()
+if google_sheets_client.worksheet is None:
+    logger.warning("Google Sheets client failed to initialize. Check logs above for details. Google Sheets writes will be skipped.")
+else:
+    logger.info("Google Sheets client initialized successfully and ready to write entries.")
 
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
