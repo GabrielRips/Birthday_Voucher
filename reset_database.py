@@ -45,9 +45,15 @@ def reset_database():
         db.connection.commit()
         cursor.close()
         
+        # Recreate tables
+        logger.info("Recreating tables...")
+        if not db.create_tables():
+            logger.error("Failed to recreate tables")
+            return False
+        
         logger.info("=" * 60)
         logger.info("Database reset completed successfully!")
-        logger.info("All tables have been dropped.")
+        logger.info("All tables have been dropped and recreated.")
         logger.info("=" * 60)
         
         return True

@@ -124,6 +124,13 @@ def import_csv_to_database(csv_file_path):
         logger.error("Failed to connect to database")
         return False
     
+    # Create tables if they don't exist
+    logger.info("Creating tables if they don't exist...")
+    if not db.create_tables():
+        logger.error("Failed to create tables")
+        return False
+    logger.info("Tables ready")
+    
     # Read CSV file
     if not os.path.exists(csv_file_path):
         logger.error(f"CSV file not found: {csv_file_path}")
