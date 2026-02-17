@@ -13,18 +13,19 @@ logger = logging.getLogger(__name__)
 class Database:
     def __init__(self):
         self.connection = None
+        # Use birthday database credentials (BIRTHDAY_DB_*) to match universal_voucher_send project
         self.config = {
-            'host': os.getenv('MYSQL_HOST', 'localhost'),
-            'database': os.getenv('MYSQL_DATABASE', 'birthday_vouchers'),
-            'user': os.getenv('MYSQL_USER', 'root'),
-            'password': os.getenv('MYSQL_PASSWORD', ''),
-            'port': int(os.getenv('MYSQL_PORT', 3306)),
+            'host': os.getenv('BIRTHDAY_DB_HOST', os.getenv('MYSQL_HOST', 'localhost')),
+            'database': os.getenv('BIRTHDAY_DB_DATABASE', os.getenv('MYSQL_DATABASE', 'birthday_vouchers')),
+            'user': os.getenv('BIRTHDAY_DB_USER', os.getenv('MYSQL_USER', 'root')),
+            'password': os.getenv('BIRTHDAY_DB_PASSWORD', os.getenv('MYSQL_PASSWORD', '')),
+            'port': int(os.getenv('BIRTHDAY_DB_PORT', os.getenv('MYSQL_PORT', 3306))),
             'charset': 'utf8mb4',
             'collation': 'utf8mb4_unicode_ci'
         }
         
         # SSL configuration for Digital Ocean MySQL (requires SSL)
-        ssl_ca = os.getenv('MYSQL_SSL_CA')
+        ssl_ca = os.getenv('BIRTHDAY_DB_SSL_CA', os.getenv('MYSQL_SSL_CA'))
         ssl_disabled = os.getenv('MYSQL_SSL_DISABLED', 'false').lower() == 'true'
         
         if not ssl_disabled:
@@ -33,7 +34,7 @@ class Database:
             self.config['ssl_verify_cert'] = os.getenv('MYSQL_SSL_VERIFY_CERT', 'true').lower() == 'true'
             self.config['ssl_verify_identity'] = os.getenv('MYSQL_SSL_VERIFY_IDENTITY', 'true').lower() == 'true'
             
-            if ssl_ca:
+            if ssl_ca and os.path.exists(ssl_ca):
                 self.config['ssl_ca'] = ssl_ca
 
     def connect(self):
@@ -56,7 +57,11 @@ class Database:
     def create_tables(self):
         """Create all tables if they don't exist"""
         try:
-            cursor = self.connection.cursor()
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for create_tables")
+                return False
+            cursor = conn.cursor()
             
             # Create customer table
             customer_table = """
@@ -98,39 +103,56 @@ class Database:
             cursor.execute(vouchers_table)
             
             # Create voucher_redemptions table
+            # Note: Using 'location' instead of 'redeemed_location' to match universal_voucher_send project
             redemptions_table = """
             CREATE TABLE IF NOT EXISTS voucher_redemptions (
                 redemption_id INT AUTO_INCREMENT PRIMARY KEY,
                 voucher_id INT NOT NULL,
-                redeemed_location VARCHAR(255),
+                location VARCHAR(100) NULL COMMENT 'Location where voucher was redeemed',
                 redeemed_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (voucher_id) REFERENCES vouchers(voucher_id) ON DELETE CASCADE,
                 INDEX idx_voucher_id (voucher_id),
-                INDEX idx_redeemed_at (redeemed_at)
+                INDEX idx_redeemed_at (redeemed_at),
+                INDEX idx_location (location)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """
             cursor.execute(redemptions_table)
             
-            self.connection.commit()
+            conn.commit()
             cursor.close()
             logger.info("All tables created or already exist")
             return True
         except Error as e:
             logger.error(f"Error creating tables: {e}")
-            self.connection.rollback()
+            if conn:
+                conn.rollback()
             return False
 
     def get_connection(self):
-        """Get the database connection"""
-        if not self.connection or not self.connection.is_connected():
-            self.connect()
-        return self.connection
+        """Get the database connection, reconnecting if needed"""
+        try:
+            if not self.connection or not self.connection.is_connected():
+                logger.info("Database connection lost, reconnecting...")
+                self.connect()
+            return self.connection
+        except Exception as e:
+            logger.error(f"Error getting database connection: {e}")
+            # Try to reconnect
+            if self.connect():
+                return self.connection
+            return None
 
     # Customer operations
     def get_or_create_customer(self, name, phone=None, email=None, birthday=None, birth_month=None):
         """Get existing customer or create a new one. Returns customer_id"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for get_or_create_customer")
+                return None
+            cursor = conn.cursor(dictionary=True)
             
             # Try to find existing customer by email or phone
             if email:
@@ -163,14 +185,15 @@ class Database:
                 birthday if birthday else None,
                 birth_month if birth_month else None
             ))
-            self.connection.commit()
+            conn.commit()
             customer_id = cursor.lastrowid
             cursor.close()
             logger.info(f"Created new customer with ID: {customer_id}")
             return customer_id
         except Error as e:
             logger.error(f"Error getting/creating customer: {e}")
-            self.connection.rollback()
+            if conn:
+                conn.rollback()
             return None
 
     def email_exists(self, email):
@@ -178,7 +201,11 @@ class Database:
         if not email:
             return False
         try:
-            cursor = self.connection.cursor()
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for email_exists")
+                return False
+            cursor = conn.cursor()
             query = "SELECT COUNT(*) FROM customer WHERE email = %s"
             cursor.execute(query, (email,))
             result = cursor.fetchone()
@@ -191,7 +218,11 @@ class Database:
     def get_customer(self, customer_id):
         """Get customer by ID"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for get_customer")
+                return None
+            cursor = conn.cursor(dictionary=True)
             query = "SELECT * FROM customer WHERE customer_id = %s"
             cursor.execute(query, (customer_id,))
             result = cursor.fetchone()
@@ -204,7 +235,11 @@ class Database:
     def get_all_customers(self):
         """Get all customers"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for get_all_customers")
+                return []
+            cursor = conn.cursor(dictionary=True)
             query = "SELECT * FROM customer"
             cursor.execute(query)
             results = cursor.fetchall()
@@ -220,7 +255,11 @@ class Database:
         """Check if a voucher code already exists in the database"""
         check_query = "SELECT COUNT(*) FROM vouchers WHERE code = %s"
         try:
-            cursor = self.connection.cursor()
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for voucher_code_exists")
+                return False
+            cursor = conn.cursor()
             cursor.execute(check_query, (voucher_code,))
             result = cursor.fetchone()
             cursor.close()
@@ -233,7 +272,11 @@ class Database:
         """Create a new voucher for a customer. If voucher exists for that year, updates it.
         Optionally expires all previous year vouchers for this customer."""
         try:
-            cursor = self.connection.cursor()
+            conn = self.get_connection()
+            if not conn:
+                logger.error("Database connection not available for create_voucher")
+                return None
+            cursor = conn.cursor()
             
             # Expire old vouchers from previous years (if requested)
             if expire_old_vouchers:
@@ -258,7 +301,7 @@ class Database:
                 expires_at = VALUES(expires_at)
             """
             cursor.execute(insert_query, (customer_id, year, voucher_code, status, expires_at))
-            self.connection.commit()
+            conn.commit()
             
             # Get the voucher_id (either newly created or updated)
             select_query = "SELECT voucher_id FROM vouchers WHERE customer_id = %s AND year = %s"
@@ -271,7 +314,8 @@ class Database:
             return voucher_id
         except Error as e:
             logger.error(f"Error creating voucher: {e}")
-            self.connection.rollback()
+            if conn:
+                conn.rollback()
             return None
 
     def get_voucher_by_code(self, voucher_code):
@@ -407,23 +451,30 @@ class Database:
             return False
 
     # Redemption operations
-    def record_redemption(self, voucher_id, redeemed_location=None, redeemed_at=None):
-        """Record a voucher redemption and update voucher status to 'redeemed'"""
+    def record_redemption(self, voucher_id, location=None, redeemed_at=None):
+        """Record a voucher redemption and update voucher status to 'redeemed'
+        Note: Using 'location' parameter to match universal_voucher_send project"""
         if redeemed_at is None:
             redeemed_at = datetime.now()
         
+        # Ensure connection is available
+        conn = self.get_connection()
+        if not conn:
+            logger.error("Database connection not available for record_redemption")
+            return None
+        
         insert_query = """
-        INSERT INTO voucher_redemptions (voucher_id, redeemed_location, redeemed_at)
+        INSERT INTO voucher_redemptions (voucher_id, location, redeemed_at)
         VALUES (%s, %s, %s)
         """
         try:
-            cursor = self.connection.cursor()
+            cursor = conn.cursor()
             cursor.execute(insert_query, (
                 voucher_id,
-                redeemed_location if redeemed_location else None,
+                location if location else None,
                 redeemed_at
             ))
-            self.connection.commit()
+            conn.commit()
             redemption_id = cursor.lastrowid
             
             # Update voucher status to 'redeemed'
@@ -434,7 +485,7 @@ class Database:
             return redemption_id
         except Error as e:
             logger.error(f"Error recording redemption: {e}")
-            self.connection.rollback()
+            conn.rollback()
             return None
 
     def get_redemptions_by_voucher(self, voucher_id):
