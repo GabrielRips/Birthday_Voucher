@@ -5,6 +5,79 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def voucher_image_exists(voucher_code, images_dir='/var/www/voucher'):
+    """
+    Check if a voucher image exists for the given voucher code.
+    
+    Args:
+        voucher_code: The voucher code to check
+        images_dir: Directory where voucher images are stored (default: '/var/www/voucher')
+    
+    Returns:
+        bool: True if image exists, False otherwise
+    """
+    image_path = os.path.join(images_dir, f'voucher_{voucher_code}.jpg')
+    return os.path.exists(image_path)
+
+def generate_voucher_image(name, voucher_code, images_dir='/var/www/voucher'):
+    """
+    Generate a voucher image (JPG) without creating a PDF.
+    This is useful when only SMS is being sent (no email/PDF needed).
+    
+    Args:
+        name: Customer name to display on voucher
+        voucher_code: Voucher code to display on voucher
+        images_dir: Directory where voucher images are stored (default: '/var/www/voucher')
+    
+    Returns:
+        str: Path to the generated image file, or None if generation failed
+    """
+    try:
+        # Create images directory if it doesn't exist
+        os.makedirs(images_dir, exist_ok=True)
+        
+        # Open base image
+        img_path = 'assests/voucher_august.png'
+        if not os.path.exists(img_path):
+            logger.error(f"Base image not found at: {img_path}")
+            return None
+            
+        image = Image.open(img_path)
+        img_width, img_height = image.size
+        draw = ImageDraw.Draw(image)
+        
+        # Font sizes
+        font_size_name = 80
+        font_size_code = 60
+        
+        # Update the font path here
+        font_path = os.path.join('path', 'to', 'your', 'font', 'DejaVuSans-Bold.ttf')  # Adjust this path
+        font_name = ImageFont.truetype(font_path, font_size_name)
+        font_code = ImageFont.truetype(font_path, font_size_code)
+        
+        # --- Relative positioning ---
+        name_rel_x, name_rel_y = 0.415, 0.293
+        code_rel_x, code_rel_y = 0.469, 0.424
+        
+        name_x = int(name_rel_x * img_width)
+        name_y = int(name_rel_y * img_height)
+        code_x = int(code_rel_x * img_width)
+        code_y = int(code_rel_y * img_height)
+        
+        draw.text((name_x, name_y), name, font=font_name, fill="black")
+        draw.text((code_x, code_y), voucher_code, font=font_code, fill="black")
+        
+        # Save to images directory for web serving
+        image_path_web = os.path.join(images_dir, f'voucher_{voucher_code}.jpg')
+        image.save(image_path_web, quality=30, optimize=True)
+        logger.info(f"Voucher image saved for web serving at: {image_path_web}")
+        
+        return image_path_web
+        
+    except Exception as e:
+        logger.error(f"Failed to generate voucher image: {e}")
+        return None
+
 def generate_voucher_pdf(name, voucher_code, output_dir='vouchers'):
     try:
         # Create output directories

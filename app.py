@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import re
 import random
 import string
-from create_voucher_pdf import generate_voucher_pdf  # Assuming you have this module
+from create_voucher_pdf import generate_voucher_pdf, voucher_image_exists, generate_voucher_image  # Assuming you have this module
 from database import Database
 from scheduler import VoucherScheduler
 from google_sheets import GoogleSheetsClient
@@ -238,6 +238,17 @@ def birthday_webhook():
         # --- SMS Sending using Template ---
         # Only send SMS if phone is provided and valid.
         if phone and phone_valid:
+            # Check if voucher image exists, create it if it doesn't
+            if not voucher_image_exists(voucher_code):
+                logger.info(f"Voucher image not found for code {voucher_code}, creating it...")
+                image_path = generate_voucher_image(name, voucher_code)
+                if image_path:
+                    logger.info(f"Created voucher image at: {image_path}")
+                else:
+                    logger.error(f"Failed to create voucher image for code {voucher_code}")
+            else:
+                logger.info(f"Voucher image already exists for code {voucher_code}")
+            
             # Use default SMS template (CellCast)
             sms_template_id = os.getenv("CELLCAST_TEMPLATE_ID")
 

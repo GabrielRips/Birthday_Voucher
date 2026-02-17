@@ -7,7 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from database import Database
 from send_email import MailerSendClient
 from send_sms import CellCastClient
-from create_voucher_pdf import generate_voucher_pdf
+from create_voucher_pdf import generate_voucher_pdf, voucher_image_exists, generate_voucher_image
 import random
 import string
 
@@ -75,6 +75,17 @@ class VoucherScheduler:
         # Send SMS if phone is provided
         if voucher.get('phone'):
             try:
+                # Check if voucher image exists, create it if it doesn't
+                if not voucher_image_exists(voucher['voucher_code']):
+                    logger.info(f"Voucher image not found for code {voucher['voucher_code']}, creating it...")
+                    image_path = generate_voucher_image(voucher['name'], voucher['voucher_code'])
+                    if image_path:
+                        logger.info(f"Created voucher image at: {image_path}")
+                    else:
+                        logger.error(f"Failed to create voucher image for code {voucher['voucher_code']}")
+                else:
+                    logger.info(f"Voucher image already exists for code {voucher['voucher_code']}")
+                
                 if is_new_year:
                     # Use new year template
                     sms_template_id = os.getenv("CELLCAST_NEW_YEAR_ID")
