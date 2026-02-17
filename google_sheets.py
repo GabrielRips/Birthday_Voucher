@@ -152,7 +152,7 @@ class GoogleSheetsClient:
             self.client = None
             self.worksheet = None
     
-    def write_entry(self, name, birthday, birth_month, email, phone, email_success, sms_success):
+    def write_entry(self, name, birthday, birth_month, email, phone, email_success, sms_success, date_received=None, time_received=None):
         """
         Write an entry to Google Sheets.
         
@@ -164,6 +164,8 @@ class GoogleSheetsClient:
             phone: Phone number
             email_success: Boolean indicating if email was sent successfully
             sms_success: Boolean indicating if SMS was sent successfully
+            date_received: Optional date string in format YYYY-MM-DD (defaults to current date)
+            time_received: Optional time string in format HH:MM:SS (defaults to current time)
         """
         if not self.worksheet:
             logger.warning("Google Sheets worksheet not available. Skipping write operation.")
@@ -180,10 +182,16 @@ class GoogleSheetsClient:
                 birthday_str = f"Month: {birth_month}"
             
             # Format date and time received (separate columns) - using Sydney timezone
-            sydney_tz = pytz.timezone('Australia/Sydney')
-            now_sydney = datetime.now(sydney_tz)
-            date_received = now_sydney.strftime("%Y-%m-%d")
-            time_received = now_sydney.strftime("%H:%M:%S")
+            if date_received and time_received:
+                # Use provided date and time
+                date_received_str = date_received
+                time_received_str = time_received
+            else:
+                # Use current date and time in Sydney timezone
+                sydney_tz = pytz.timezone('Australia/Sydney')
+                now_sydney = datetime.now(sydney_tz)
+                date_received_str = now_sydney.strftime("%Y-%m-%d")
+                time_received_str = now_sydney.strftime("%H:%M:%S")
             
             # Format success statuses
             email_status = "Yes" if email_success else "No"
@@ -195,8 +203,8 @@ class GoogleSheetsClient:
                 birthday_str,
                 email or "",
                 phone or "",
-                date_received,
-                time_received,
+                date_received_str,
+                time_received_str,
                 email_status,
                 sms_status
             ]

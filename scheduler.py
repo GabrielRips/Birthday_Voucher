@@ -98,13 +98,18 @@ class VoucherScheduler:
         return email_success, sms_success
 
     def annual_new_year_task(self):
-        """Run on January 2nd: Send to everyone, issue new codes for the new year"""
+        """Run on January 2nd: Delete all stored vouchers, then send to everyone, issue new codes for the new year"""
         logger.info("Starting annual new year task - January 2nd")
         
         try:
             # Ensure database connection is active
             if not self.db.connection or not self.db.connection.is_connected():
                 self.db.connect()
+            
+            # Delete all stored vouchers first
+            logger.info("Deleting all stored vouchers...")
+            deleted_count = self.db.delete_all_vouchers()
+            logger.info(f"Deleted {deleted_count} vouchers from database")
             
             # Get all customers from database
             customers = self.db.get_all_customers()

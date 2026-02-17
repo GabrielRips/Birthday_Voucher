@@ -2,3 +2,4 @@
 *.jpg
 *.json
 get_cellcast_templates.py
+*.csv

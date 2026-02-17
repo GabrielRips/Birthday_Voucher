@@ -355,6 +355,22 @@ class Database:
             self.connection.rollback()
             return False
 
+    def delete_all_vouchers(self):
+        """Delete all vouchers from the database"""
+        delete_query = "DELETE FROM vouchers"
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(delete_query)
+            deleted_count = cursor.rowcount
+            self.connection.commit()
+            cursor.close()
+            logger.info(f"Deleted all vouchers from database ({deleted_count} vouchers deleted)")
+            return deleted_count
+        except Error as e:
+            logger.error(f"Error deleting all vouchers: {e}")
+            self.connection.rollback()
+            return 0
+
     # Voucher status operations
     def update_voucher_status(self, voucher_id, status):
         """Update the status of a voucher (active, redeemed, expired)"""
