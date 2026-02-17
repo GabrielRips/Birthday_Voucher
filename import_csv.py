@@ -2,7 +2,7 @@
 """
 CSV Import Script for Birthday Voucher System
 
-This script imports data from a CSV file into the database and Google Sheets.
+This script imports data from a CSV file into the database.
 Expected CSV format:
 Name, Birthday_DAY, Birthday_MONTH, eMail, Phone, Voucher Code, Email Sent Date, SMS Sent Date, etc.
 """
@@ -14,7 +14,6 @@ import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from database import Database
-from google_sheets import GoogleSheetsClient
 import pytz
 
 # Load environment variables
@@ -112,9 +111,9 @@ def normalize_phone(phone_str):
     return phone if phone else None
 
 
-def import_csv_to_database_and_sheets(csv_file_path):
+def import_csv_to_database(csv_file_path):
     """
-    Import CSV data into database and Google Sheets
+    Import CSV data into database
     
     Args:
         csv_file_path: Path to the CSV file
@@ -124,11 +123,6 @@ def import_csv_to_database_and_sheets(csv_file_path):
     if not db.connect():
         logger.error("Failed to connect to database")
         return False
-    
-    # Initialize Google Sheets client
-    google_sheets = GoogleSheetsClient()
-    if not google_sheets.worksheet:
-        logger.warning("Google Sheets not available, will only import to database")
     
     # Read CSV file
     if not os.path.exists(csv_file_path):
@@ -230,21 +224,6 @@ def import_csv_to_database_and_sheets(csv_file_path):
                         if not voucher_id:
                             logger.warning(f"Row {row_num}: Failed to create voucher for {name}")
                     
-                    # Write to Google Sheets
-                    if google_sheets.worksheet:
-                        # Write entry with date and time from CSV
-                        google_sheets.write_entry(
-                            name=name,
-                            birthday=birthday,
-                            birth_month=birth_month,
-                            email=email if email else None,
-                            phone=phone,
-                            email_success=email_success,
-                            sms_success=sms_success,
-                            date_received=date_received,
-                            time_received=time_received
-                        )
-                    
                     imported_count += 1
                     
                     if imported_count % 100 == 0:
@@ -281,7 +260,7 @@ if __name__ == "__main__":
     
     logger.info(f"Starting CSV import from: {csv_file}")
     
-    success = import_csv_to_database_and_sheets(csv_file)
+    success = import_csv_to_database(csv_file)
     
     if success:
         logger.info("Import completed successfully!")

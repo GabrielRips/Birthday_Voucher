@@ -216,4 +216,109 @@ class GoogleSheetsClient:
         except Exception as e:
             logger.exception(f"Failed to write entry to Google Sheets: {e}")
             return False
+    
+    def write_entries_batch(self, entries):
+        """
+        Write multiple entries to Google Sheets in a single batch operation.
+        This is more efficient and helps avoid rate limits.
+        
+        Args:
+            entries: List of dictionaries with keys: name, birthday, birth_month, email, phone, 
+                    email_success, sms_success, date_received (optional), time_received (optional)
+        
+        Returns:
+            Number of entries successfully written
+        """
+        if not self.worksheet:
+            logger.warning("Google Sheets worksheet not available. Skipping batch write operation.")
+            return 0
+        
+        if not entries:
+            return 0
+        
+        rows = []
+        for entry in entries:
+            try:
+                # Format birthday (combine day and month)
+                birthday_str = ""
+                birthday = entry.get('birthday')
+                birth_month = entry.get('birth_month')
+                if birthday and birth_month:
+                    birthday_str = f"{birthday}/{birth_month}"
+                elif birthday:
+                    birthday_str = str(birthday)
+                elif birth_month:
+                    birthday_str = f"Month: {birth_month}"
+                
+                # Format date and time received
+                date_received = entry.get('date_received')
+                time_received = entry.get('time_received')
+                if date_received and time_received:
+                    date_received_str = date_received
+                    time_received_str = time_received
+                else:
+                    # Use current date and time in Sydney timezone
+                    sydney_tz = pytz.timezone('Australia/Sydney')
+                    now_sydney = datetime.now(sydney_tz)
+                    date_received_str = now_sydney.strftime("%Y-%m-%d")
+                    time_received_str = now_sydney.strftime("%H:%M:%S")
+                
+                # Format success statuses
+                email_status = "Yes" if entry.get('email_success') else "No"
+                sms_status = "Yes" if entry.get('sms_success') else "No"
+                
+                # Create row
+                row = [
+                    entry.get('name') or "",
+                    birthday_str,
+                    entry.get('email') or "",
+                    entry.get('phone') or "",
+                    date_received_str,
+                    time_received_str,
+                    email_status,
+                    sms_status
+                ]
+                rows.append(row)
+            except Exception as e:
+                logger.error(f"Error formatting entry for batch write: {e}")
+                continue
+        
+        if not rows:
+            return 0
+        
+        # Write in batches with retry logic
+        import time
+        max_retries = 3
+        batch_size = 100  # Google Sheets allows up to 500, but we use 100 to be safe
+        
+        written_count = 0
+        for i in range(0, len(rows), batch_size):
+            batch = rows[i:i + batch_size]
+            retries = 0
+            success = False
+            
+            while retries < max_retries and not success:
+                try:
+                    self.worksheet.append_rows(batch)
+                    written_count += len(batch)
+                    success = True
+                    logger.info(f"Wrote batch of {len(batch)} rows to Google Sheets ({written_count}/{len(rows)} total)")
+                except Exception as e:
+                    retries += 1
+                    if "429" in str(e) or "Quota exceeded" in str(e):
+                        # Rate limit error - wait with exponential backoff
+                        wait_time = (2 ** retries) * 60  # 2, 4, 8 minutes
+                        logger.warning(f"Rate limit hit. Waiting {wait_time} seconds before retry {retries}/{max_retries}...")
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"Error writing batch to Google Sheets: {e}")
+                        if retries >= max_retries:
+                            raise
+                        time.sleep(5)  # Short wait for other errors
+            
+            # Small delay between batches to avoid hitting rate limits
+            if i + batch_size < len(rows):
+                time.sleep(2)  # 2 second delay between batches
+        
+        return written_count
 
