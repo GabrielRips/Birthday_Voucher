@@ -152,6 +152,47 @@ class GoogleSheetsClient:
             self.client = None
             self.worksheet = None
     
+    def _ensure_worksheet_has_space(self):
+        """
+        Check if current worksheet is approaching row limit and create a new one if needed.
+        Google Sheets has a limit of ~45,817 rows per worksheet.
+        """
+        try:
+            # Get current row count (excluding header)
+            all_values = self.worksheet.col_values(1)
+            current_rows = len(all_values)
+            
+            # Create new worksheet if we're within 100 rows of the limit
+            # (Google Sheets limit is typically 45,817 rows)
+            if current_rows >= 45700:  # 100 rows before the limit
+                logger.warning(f"Worksheet '{self.worksheet.title}' has {current_rows} rows. Creating new worksheet...")
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base_name = self.worksheet.title.split('_')[0] if '_' in self.worksheet.title else self.worksheet.title
+                new_worksheet_name = f"{base_name}_{timestamp}"
+                
+                # Create new worksheet
+                new_worksheet = self.spreadsheet.add_worksheet(title=new_worksheet_name, rows=1000, cols=10)
+                
+                # Add headers to new worksheet
+                new_worksheet.append_row([
+                    "Person Name",
+                    "Birthday",
+                    "Email",
+                    "Phone Number",
+                    "Date Received",
+                    "Time Received",
+                    "Email Sent Successfully",
+                    "SMS Sent Successfully"
+                ])
+                
+                # Switch to new worksheet
+                self.worksheet = new_worksheet
+                logger.info(f"Created and switched to new worksheet: '{new_worksheet_name}'")
+                return True
+        except Exception as e:
+            logger.error(f"Error checking/creating new worksheet: {e}")
+            return False
+    
     def write_entry(self, name, birthday, birth_month, email, phone, email_success, sms_success, date_received=None, time_received=None):
         """
         Write an entry to Google Sheets.
@@ -172,6 +213,8 @@ class GoogleSheetsClient:
             return False
         
         try:
+            # Check if we need to create a new worksheet before writing
+            self._ensure_worksheet_has_space()
             # Format birthday (combine day and month)
             birthday_str = ""
             if birthday and birth_month:
@@ -197,10 +240,6 @@ class GoogleSheetsClient:
             email_status = "Yes" if email_success else "No"
             sms_status = "Yes" if sms_success else "No"
             
-            # Find the next empty row in column A
-            all_values = self.worksheet.col_values(1)  # Get all values in column A
-            next_row = len(all_values) + 1
-            
             # Prepare row data
             row = [
                 name or "",
@@ -213,11 +252,45 @@ class GoogleSheetsClient:
                 sms_status
             ]
             
-            # Write to specific range starting from column A
-            range_name = f"A{next_row}:H{next_row}"
-            self.worksheet.update(range_name, [row], value_input_option='USER_ENTERED')
-            logger.info(f"Successfully wrote entry to Google Sheets for {name} at row {next_row}")
-            return True
+            # Use append_row instead of update to avoid row limit issues
+            # append_row automatically adds to the end and handles sheet limits better
+            try:
+                self.worksheet.append_row(row, value_input_option='USER_ENTERED')
+                logger.info(f"Successfully wrote entry to Google Sheets for {name}")
+                return True
+            except gspread.exceptions.APIError as e:
+                # Check if it's a row limit error
+                if "exceeds grid limits" in str(e) or "Max rows" in str(e):
+                    logger.warning(f"Sheet has reached row limit. Attempting to create new worksheet...")
+                    # Try to create a new worksheet with a timestamp
+                    try:
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        new_worksheet_name = f"{self.worksheet.title}_{timestamp}"
+                        new_worksheet = self.spreadsheet.add_worksheet(title=new_worksheet_name, rows=1000, cols=10)
+                        
+                        # Add headers to new worksheet
+                        new_worksheet.append_row([
+                            "Person Name",
+                            "Birthday",
+                            "Email",
+                            "Phone Number",
+                            "Date Received",
+                            "Time Received",
+                            "Email Sent Successfully",
+                            "SMS Sent Successfully"
+                        ])
+                        
+                        # Switch to new worksheet and append the row
+                        self.worksheet = new_worksheet
+                        self.worksheet.append_row(row, value_input_option='USER_ENTERED')
+                        logger.info(f"Created new worksheet '{new_worksheet_name}' and wrote entry for {name}")
+                        return True
+                    except Exception as create_error:
+                        logger.error(f"Failed to create new worksheet: {create_error}")
+                        return False
+                else:
+                    # Re-raise if it's a different error
+                    raise
             
         except Exception as e:
             logger.exception(f"Failed to write entry to Google Sheets: {e}")
