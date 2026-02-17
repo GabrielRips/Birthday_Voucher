@@ -173,6 +173,21 @@ class Database:
             self.connection.rollback()
             return None
 
+    def email_exists(self, email):
+        """Check if an email already exists in the database"""
+        if not email:
+            return False
+        try:
+            cursor = self.connection.cursor()
+            query = "SELECT COUNT(*) FROM customer WHERE email = %s"
+            cursor.execute(query, (email,))
+            result = cursor.fetchone()
+            cursor.close()
+            return result[0] > 0
+        except Error as e:
+            logger.error(f"Error checking email existence: {e}")
+            return False
+
     def get_customer(self, customer_id):
         """Get customer by ID"""
         try:

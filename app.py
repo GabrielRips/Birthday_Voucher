@@ -152,15 +152,25 @@ def birthday_webhook():
             logger.error("Name is required.")
             return jsonify({"status": "error", "message": "Name is required."}), 400
 
+        # Check for duplicate email
+        if email and email_valid:
+            if db.email_exists(email):
+                logger.warning(f"Duplicate email detected: {email}. Skipping processing.")
+                return jsonify({
+                    "status": "error", 
+                    "message": "Email already exists in the system."
+                }), 400
+
         # Generate voucher code if not provided
         if not voucher_code:
             voucher_code = generate_voucher_code()
             logger.info(f"Generated new voucher code: {voucher_code}")
         else:
-            # Check if provided voucher code already exists
+            # Check if provided voucher code already exists, generate new one if duplicate
             if db.voucher_code_exists(voucher_code):
-                logger.error(f"Voucher code already exists: {voucher_code}")
-                return jsonify({"status": "error", "message": "Voucher code already exists."}), 400
+                logger.warning(f"Voucher code already exists: {voucher_code}. Generating new code.")
+                voucher_code = generate_voucher_code()
+                logger.info(f"Generated new voucher code: {voucher_code}")
 
         # Validate email and phone formats separately
         email_valid = True

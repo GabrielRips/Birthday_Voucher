@@ -11,6 +11,8 @@ import csv
 import sys
 import os
 import logging
+import random
+import string
 from datetime import datetime
 from dotenv import load_dotenv
 from database import Database
@@ -195,6 +197,13 @@ def import_csv_to_database(csv_file_path):
                     except ValueError:
                         logger.warning(f"Row {row_num}: Invalid birthday format for {name}")
                     
+                    # Check for duplicate email
+                    if email:
+                        if db.email_exists(email):
+                            logger.warning(f"Row {row_num}: Duplicate email detected for {name} ({email}). Skipping.")
+                            skipped_count += 1
+                            continue
+                    
                     # Create customer in database
                     customer_id = db.get_or_create_customer(
                         name=name,
@@ -211,6 +220,23 @@ def import_csv_to_database(csv_file_path):
                     
                     # Create voucher if voucher code exists
                     if voucher_code:
+                        # Check if voucher code already exists, generate new one if duplicate
+                        original_voucher_code = voucher_code
+                        max_attempts = 100
+                        attempts = 0
+                        while db.voucher_code_exists(voucher_code) and attempts < max_attempts:
+                            # Generate new voucher code (7 digits)
+                            voucher_code = ''.join(random.choices(string.digits, k=7))
+                            attempts += 1
+                        
+                        if attempts > 0:
+                            logger.warning(f"Row {row_num}: Voucher code {original_voucher_code} already exists. Using new code: {voucher_code}")
+                        
+                        if attempts >= max_attempts:
+                            logger.error(f"Row {row_num}: Failed to generate unique voucher code after {max_attempts} attempts")
+                            error_count += 1
+                            continue
+                        
                         # Extract year from date or use current year
                         try:
                             if date_received:
