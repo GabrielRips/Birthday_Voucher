@@ -152,7 +152,19 @@ def birthday_webhook():
             logger.error("Name is required.")
             return jsonify({"status": "error", "message": "Name is required."}), 400
 
-        # Check for duplicate email
+        # Validate email and phone formats separately
+        email_valid = True
+        phone_valid = True
+
+        if email and not is_valid_email(email):
+            logger.error(f"Invalid email format: {email}")
+            email_valid = False
+
+        if phone and not is_valid_phone(phone):
+            logger.error(f"Invalid phone format: {phone}")
+            phone_valid = False
+
+        # Check for duplicate email (only if email is valid)
         if email and email_valid:
             if db.email_exists(email):
                 logger.warning(f"Duplicate email detected: {email}. Skipping processing.")
@@ -171,18 +183,6 @@ def birthday_webhook():
                 logger.warning(f"Voucher code already exists: {voucher_code}. Generating new code.")
                 voucher_code = generate_voucher_code()
                 logger.info(f"Generated new voucher code: {voucher_code}")
-
-        # Validate email and phone formats separately
-        email_valid = True
-        phone_valid = True
-
-        if email and not is_valid_email(email):
-            logger.error(f"Invalid email format: {email}")
-            email_valid = False
-
-        if phone and not is_valid_phone(phone):
-            logger.error(f"Invalid phone format: {phone}")
-            phone_valid = False
 
         # If both email and phone are provided but invalid, then nothing can be sent.
         if email and phone and not (email_valid or phone_valid):
