@@ -3,6 +3,7 @@ from google.oauth2.service_account import Credentials
 import os
 import logging
 from datetime import datetime
+import pytz
 import re
 
 logger = logging.getLogger(__name__)
@@ -178,10 +179,11 @@ class GoogleSheetsClient:
             elif birth_month:
                 birthday_str = f"Month: {birth_month}"
             
-            # Format date and time received (separate columns)
-            now = datetime.now()
-            date_received = now.strftime("%Y-%m-%d")
-            time_received = now.strftime("%H:%M:%S")
+            # Format date and time received (separate columns) - using Sydney timezone
+            sydney_tz = pytz.timezone('Australia/Sydney')
+            now_sydney = datetime.now(sydney_tz)
+            date_received = now_sydney.strftime("%Y-%m-%d")
+            time_received = now_sydney.strftime("%H:%M:%S")
             
             # Format success statuses
             email_status = "Yes" if email_success else "No"
