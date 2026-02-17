@@ -197,7 +197,11 @@ class GoogleSheetsClient:
             email_status = "Yes" if email_success else "No"
             sms_status = "Yes" if sms_success else "No"
             
-            # Append row to worksheet
+            # Find the next empty row in column A
+            all_values = self.worksheet.col_values(1)  # Get all values in column A
+            next_row = len(all_values) + 1
+            
+            # Prepare row data
             row = [
                 name or "",
                 birthday_str,
@@ -209,8 +213,10 @@ class GoogleSheetsClient:
                 sms_status
             ]
             
-            self.worksheet.append_row(row)
-            logger.info(f"Successfully wrote entry to Google Sheets for {name}")
+            # Write to specific range starting from column A
+            range_name = f"A{next_row}:H{next_row}"
+            self.worksheet.update(range_name, [row], value_input_option='USER_ENTERED')
+            logger.info(f"Successfully wrote entry to Google Sheets for {name} at row {next_row}")
             return True
             
         except Exception as e:
