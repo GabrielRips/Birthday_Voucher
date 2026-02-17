@@ -69,14 +69,20 @@ scheduler = VoucherScheduler(db, mailer_client, cellcast_client)
 scheduler.start()
 
 # Initialize Google Sheets client
+logger.info("Initializing Google Sheets client...")
 google_sheets_client = GoogleSheetsClient()
+if google_sheets_client.worksheet is None:
+    logger.warning("⚠️  Google Sheets client FAILED to initialize. Google Sheets writes will be skipped.")
+    logger.warning("   Check your .env file for GOOGLE_SHEETS_CREDENTIALS_FILE and GOOGLE_SHEETS_SPREADSHEET_ID")
+else:
+    logger.info("✅ Google Sheets client initialized successfully!")
 
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     return re.match(regex, email)
 
 def is_valid_phone(phone):
-    return re.match(r'^\+?61\d{9}$', phone)
+    return re.match(r'^(\+?61\d{9}|04\d{8})$', phone)
 
 def generate_voucher_code():
     """Generate a unique voucher code in format xxxxxxx (7 digits)"""
