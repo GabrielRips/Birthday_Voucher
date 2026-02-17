@@ -122,7 +122,8 @@ class GoogleSheetsClient:
                         "Birthday",
                         "Email",
                         "Phone Number",
-                        "Datetime Received",
+                        "Date Received",
+                        "Time Received",
                         "Email Sent Successfully",
                         "SMS Sent Successfully"
                     ])
@@ -136,7 +137,8 @@ class GoogleSheetsClient:
                     "Birthday",
                     "Email",
                     "Phone Number",
-                    "Datetime Received",
+                    "Date Received",
+                    "Time Received",
                     "Email Sent Successfully",
                     "SMS Sent Successfully"
                 ])
@@ -176,8 +178,10 @@ class GoogleSheetsClient:
             elif birth_month:
                 birthday_str = f"Month: {birth_month}"
             
-            # Format datetime received
-            datetime_received = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Format date and time received (separate columns)
+            now = datetime.now()
+            date_received = now.strftime("%Y-%m-%d")
+            time_received = now.strftime("%H:%M:%S")
             
             # Format success statuses
             email_status = "Yes" if email_success else "No"
@@ -189,7 +193,8 @@ class GoogleSheetsClient:
                 birthday_str,
                 email or "",
                 phone or "",
-                datetime_received,
+                date_received,
+                time_received,
                 email_status,
                 sms_status
             ]
