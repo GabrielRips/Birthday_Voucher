@@ -209,30 +209,6 @@ class GoogleSheetsClient:
                 sms_status
             ]
             
-            # Check current row count and expand worksheet if needed
-            try:
-                all_values = self.worksheet.col_values(1)
-                current_rows = len(all_values)
-                
-                # Google Sheets has a limit, but we can expand the worksheet
-                # Check if we're close to the current worksheet size limit
-                # Get current worksheet dimensions
-                try:
-                    # Try to get the worksheet's row count
-                    # If we're at or near the limit, expand it
-                    if current_rows >= 45000:  # Close to typical limit
-                        # Expand the worksheet by adding more rows
-                        # Get current row count from the worksheet properties
-                        worksheet_info = self.worksheet.row_count
-                        if worksheet_info and current_rows >= worksheet_info - 100:
-                            # Expand by 1000 rows
-                            new_row_count = worksheet_info + 1000
-                            logger.info(f"Expanding worksheet from {worksheet_info} to {new_row_count} rows")
-                            # Note: gspread doesn't have a direct resize method, but append_row should work
-                            # The worksheet will auto-expand when we append
-                except Exception as expand_error:
-                    logger.warning(f"Could not check/expand worksheet size: {expand_error}")
-            
             # Use append_row to add to the end of the worksheet
             # This should automatically expand the worksheet if needed
             try:
