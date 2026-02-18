@@ -13,6 +13,7 @@ from create_voucher_pdf import generate_voucher_pdf, voucher_image_exists, gener
 from database import Database
 from scheduler import VoucherScheduler
 from google_sheets import GoogleSheetsClient
+from mailerlite_client import MailerLiteClassicClient
 
 # Load environment variables from .env file
 load_dotenv()
@@ -52,6 +53,16 @@ mailer_client = MailerSendClient(
 cellcast_api_key = os.getenv("CELLCAST_API_KEY")
 cellcast_sender_id = os.getenv("CELLCAST_SENDER_ID")  # Optional
 cellcast_client = CellCastClient(app_key=cellcast_api_key, sender_id=cellcast_sender_id)
+
+# Load MailerLite Credentials
+mailerlite_api_key = os.getenv("MAILERLITE_API_KEY")
+mailerlite_group_id = os.getenv("MAILERLITE_GROUP_ID")
+
+logger.info(f"MAILERLITE_API_KEY: {'Loaded' if mailerlite_api_key else 'Missing'}")
+logger.info(f"MAILERLITE_GROUP_ID: {mailerlite_group_id}")
+
+# Initialize MailerLite Client (optional - won't fail if credentials are missing)
+mailerlite_client = MailerLiteClassicClient(api_key=mailerlite_api_key) if mailerlite_api_key else None
 
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
 
@@ -216,6 +227,18 @@ def birthday_webhook():
         except Exception as e:
             logger.exception(f"Error storing voucher in database: {e}")
             return jsonify({"status": "error", "message": "Database error occurred."}), 500
+
+        # Sync subscriber to MailerLite group (only if email is valid)
+        if email and email_valid and mailerlite_client:
+            try:
+                mailerlite_client.add_subscriber_to_group(
+                    group_id=mailerlite_group_id,
+                    email=email,
+                    name=name,
+                )
+                logger.info(f"Successfully added {email} to MailerLite group {mailerlite_group_id}")
+            except Exception as e:
+                logger.warning(f"MailerLite sync failed for email {email}: {e}")
 
         # Initialize success flags
         email_success = False
