@@ -221,24 +221,24 @@ class VoucherScheduler:
                     # Calculate days until birthday
                     days_until = (next_birthday - current_date).days
                     
-                    # Check if birthday is 1 month away (28-31 days)
-                    # Check if birthday is 2 weeks away (13-15 days)
+                    # Check if birthday is exactly 30 days away (1 month)
+                    # Check if birthday is exactly 14 days away (2 weeks)
                     email_template_id = None
                     sms_template_id = None
                     should_send = False
                     
-                    if 28 <= days_until <= 31:
-                        # 1 month away
+                    if days_until == 30:
+                        # Exactly 1 month away
                         email_template_id = os.getenv("MAILERSEND_MONTH_ID")
                         sms_template_id = os.getenv("CELLCAST_MONTH_ID")
                         should_send = True
-                        logger.info(f"{customer['name']} birthday is ~1 month away ({days_until} days)")
-                    elif 13 <= days_until <= 15:
-                        # 2 weeks away
+                        logger.info(f"{customer['name']} birthday is exactly 1 month away (30 days)")
+                    elif days_until == 14:
+                        # Exactly 2 weeks away
                         email_template_id = os.getenv("MAILERSEND_2WEEK_ID")
                         sms_template_id = os.getenv("CELLCAST_2WEEK_ID")
                         should_send = True
-                        logger.info(f"{customer['name']} birthday is ~2 weeks away ({days_until} days)")
+                        logger.info(f"{customer['name']} birthday is exactly 2 weeks away (14 days)")
                     
                     if should_send:
                         # Get the most recent voucher for this customer (current year or latest)

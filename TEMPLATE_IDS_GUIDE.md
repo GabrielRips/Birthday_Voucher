@@ -62,11 +62,11 @@ CELLCAST_2WEEK_ID=your_2week_reminder_sms_template_id
 
 **Templates Used:**
 
-**1 Month Reminder (28-31 days before birthday):**
+**1 Month Reminder (exactly 30 days before birthday):**
 - `MAILERSEND_MONTH_ID` - Email template
 - `CELLCAST_MONTH_ID` - SMS template
 
-**2 Week Reminder (13-15 days before birthday):**
+**2 Week Reminder (exactly 14 days before birthday):**
 - `MAILERSEND_2WEEK_ID` - Email template
 - `CELLCAST_2WEEK_ID` - SMS template
 
@@ -166,8 +166,8 @@ WEBHOOK_SECRET_TOKEN=your_webhook_secret_token
 | Task | When | Email Template | SMS Template |
 |------|------|----------------|--------------|
 | New Year | Jan 2, 9am | `MAILERSEND_NEW_YEAR_ID` | `CELLCAST_NEW_YEAR_ID` |
-| 1 Month Reminder | Daily check, 28-31 days before | `MAILERSEND_MONTH_ID` | `CELLCAST_MONTH_ID` |
-| 2 Week Reminder | Daily check, 13-15 days before | `MAILERSEND_2WEEK_ID` | `CELLCAST_2WEEK_ID` |
+| 1 Month Reminder | Daily check, exactly 30 days before | `MAILERSEND_MONTH_ID` | `CELLCAST_MONTH_ID` |
+| 2 Week Reminder | Daily check, exactly 14 days before | `MAILERSEND_2WEEK_ID` | `CELLCAST_2WEEK_ID` |
 
 ### For Webhook Calls (Manual/API)
 

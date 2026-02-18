@@ -24,11 +24,11 @@ This application includes two automated scheduled tasks that run in the backgrou
 **What it does:**
 1. Checks all people in the database
 2. Calculates how many days until each person's next birthday
-3. If birthday is **1 month away** (28-31 days):
+3. If birthday is **exactly 30 days away** (1 month):
    - Sends email using `MAILERSEND_MONTH_ID` template
    - Sends SMS using `CELLCAST_MONTH_ID` template
    - Includes their existing voucher code
-4. If birthday is **2 weeks away** (13-15 days):
+4. If birthday is **exactly 14 days away** (2 weeks):
    - Sends email using `MAILERSEND_2WEEK_ID` template
    - Sends SMS using `CELLCAST_2WEEK_ID` template
    - Includes their existing voucher code
