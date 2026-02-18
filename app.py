@@ -173,6 +173,15 @@ def birthday_webhook():
                     "message": "Email already exists in the system."
                 }), 400
 
+        # Check for duplicate phone (only if phone is valid)
+        if phone and phone_valid:
+            if db.phone_exists(phone):
+                logger.warning(f"Duplicate phone detected: {phone}. Skipping processing.")
+                return jsonify({
+                    "status": "error", 
+                    "message": "Phone number already exists in the system."
+                }), 400
+
         # Generate voucher code if not provided
         if not voucher_code:
             voucher_code = generate_voucher_code()
